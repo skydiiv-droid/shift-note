@@ -127,39 +127,46 @@
   .tg.sm{font-size:var(--fs-mini)}
   .tg.off{color:var(--ph)}
   .tg:hover{background:#e0f2fe}
+  .tg.al{text-align:left; padding-left:2px}    /* 좌측정렬 (가운데에 수치 손글씨) */
+  .tg.ar{text-align:right; padding-right:2px}   /* 우측정렬 */
 
   td.vs{position:relative}
-  .vsbox{width:100%}
 
   .nmwrap{display:flex; flex-direction:column; justify-content:center; height:100%; gap:0.55em}
 
-  /* ── 오른쪽 칸: 리치텍스트 + 완료 체크 ── */
-  .jwrap{display:flex; align-items:center; gap:2px; width:100%}
-  .rt{
-    flex:1; min-width:0;
-    border:0; background:transparent; outline:0;
-    font-family:inherit; color:var(--ink);
-    font-size:var(--fs-memo); padding:0 1px; line-height:1.1;
-    min-height:1.15em; white-space:nowrap; overflow:hidden;
-  }
-  .rt:focus{background:#e0f2fe}
-  .chk{
-    display:none; margin-left:auto; font-size:11pt; color:var(--ink);
-    cursor:pointer; white-space:nowrap; user-select:none; padding:0 2px; font-weight:600; line-height:1;
-  }
-  .jwrap.has .chk{display:inline}
-  .chk:hover{background:#e0f2fe}
-
   /* O2 유량 입력 + L 토글 (우측정렬) */
   .o2wrap{display:flex; align-items:center; width:100%}
-  .o2wrap .o2in{flex:1; min-width:0; text-align:right; padding-right:1px}
-  .tg.o2l{width:auto; flex:0 0 auto; padding:0 1px}
+  .o2wrap .o2in{flex:1; min-width:0; text-align:left; padding-left:2px}
+  .tg.o2l{width:auto; flex:0 0 auto; padding:0 2px}
 
-  /* 정규 V/S 손글씨 템플릿 (SBP/DBP-HR-RR-BT-SpO2) */
+  /* 정규 V/S 손글씨 템플릿 (SBP/DBP-HR-RR-BT-SpO2) — 각 칸에 흐린 가이드 라벨 */
   .vstpl{font-size:var(--fs-cell); white-space:nowrap; color:var(--ink); letter-spacing:0}
-  .vsl{display:inline-block; min-width:0.8cm}
+  .vsl{display:inline-block; min-width:0.8cm; text-align:center}
+  .vsl i{font-style:normal; font-size:6pt; color:#c3ccd8}   /* 손글씨로 덮어써도 방해 안 될 만큼 흐리게 */
   .vspo2{display:none}
   td.vs.son .vspo2{display:inline}
+
+  /* ── 오른쪽 "할 일" 칸(3칸 병합) ───────────────────── */
+  td.todo{vertical-align:top}
+  .todowrap{position:relative; height:100%; width:100%}
+  .todobox{
+    height:100%; column-count:2; column-gap:5px; column-fill:auto;
+    direction:rtl;                 /* 우측 열부터 채움 */
+    overflow:hidden; padding:12px 1px 1px;
+    font-size:var(--fs-memo); line-height:1.3;
+  }
+  .todoitem{
+    direction:ltr; text-align:right; white-space:nowrap; overflow:hidden;
+    break-inside:avoid; color:var(--ink); outline:0; min-height:1.2em;
+  }
+  .todoitem:focus{background:#e0f2fe}
+  .todoadd{
+    position:absolute; top:0; right:0; z-index:5;
+    width:16px; height:16px; line-height:14px; text-align:center;
+    border:1px solid #94a3b8; border-radius:50%;
+    background:#fff; color:#475569; font-size:13px; cursor:pointer; user-select:none;
+  }
+  .todoadd:hover{background:#0ea5e9; color:#fff; border-color:#0ea5e9}
 
   /* 우클릭 서식 메뉴 */
   .ctxmenu{
@@ -189,8 +196,9 @@
     .tg.off{color:transparent !important}
     input.f:focus{background:transparent}
     input.f::placeholder{color:transparent !important}
-    .rt:focus{background:transparent}
     .ctxmenu{display:none !important}
+    .todoadd{display:none !important}
+    .todoitem:focus{background:transparent}
     /* 형광펜·글씨색이 인쇄에도 그대로 나오게 */
     .sheet, .sheet *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     html,body{width:17cm}
@@ -257,7 +265,7 @@
 
   // 셀 키 목록 (가져오기/내보내기 순서 고정)
   const KEYS = ["io","iv","lab","ua","ekg","rad","name","dc","bp","bpr","s","o2","o2l","b","m",
-                "h1","h2","j1","j1c","h3","h4","j2","j2c","j3","j3c"];
+                "h1","h2","h3","h4","todo"];
 
   /* ── 한 환자 블록 3행 생성 ───────────────────────────── */
   function block(i){
@@ -266,11 +274,13 @@
       `<span class="tg off ${cls||""}" data-k="${k}" data-label="${label}" data-i="${i}" title="${label}">${label}</span>`;
     const inp = (k,cls,ph,ml) =>
       `<input class="f ${cls||""}" data-k="${k}" data-i="${i}" placeholder="${ph||""}"${ml?` maxlength="${ml}"`:""}>`;
-    // 오른쪽 칸: 리치텍스트(contenteditable) + 완료 체크 괄호
-    const jc = (k) =>
-      `<div class="jwrap">`
-      + `<div class="f memo rt" data-k="${k}" data-i="${i}" contenteditable="true"></div>`
-      + `<span class="chk" data-k="${k}c" data-i="${i}" title="완료 표시 (클릭: + 토글)">(&nbsp;&nbsp;&nbsp;)</span>`
+    // V/S 슬롯: 작고 흐린 가이드 라벨(손글씨로 덮어써도 되게)
+    const vl = (lab) => `<span class="vsl"><i>${lab}</i></span>`;
+    // 오른쪽 "할 일" 칸(3칸 병합, rowspan 3): 리스트 + 인쇄 안 되는 추가 버튼
+    const todo =
+      `<div class="todowrap">`
+      + `<div class="todobox" data-k="todo" data-i="${i}"></div>`
+      + `<span class="todoadd no-print" data-i="${i}" title="할 일 추가">+</span>`
       + `</div>`;
 
     return `
@@ -282,30 +292,28 @@
           ${tg("dc","d/c","sm")}
         </div>
       </td>
-      <td class="e">${tg("bp","BP")}</td>
-      <td class="f">${tg("bpr","T")}</td>
+      <td class="e">${tg("bp","BP","al")}</td>
+      <td class="f">${tg("bpr","T","ar")}</td>
       <td rowspan="3" class="gut"></td>
       <td class="h">${inp("h1","memo")}</td>
       <td class="h">${inp("h2","memo")}</td>
-      <td class="j">${jc("j1")}</td>
+      <td rowspan="3" class="j todo">${todo}</td>
     </tr>
     <tr class="r2" data-i="${i}">
       <td colspan="4" class="a">${inp("iv","ctr mini","IV일",5)}</td>
-      <td class="e">${tg("s","S")}</td>
-      <td class="f"><div class="o2wrap">${inp("o2","mini o2in","",4)}${tg("o2l","L","sm o2l")}</div></td>
+      <td class="e">${tg("s","S","al")}</td>
+      <td class="f"><div class="o2wrap">${inp("o2","mini o2in","",4)}${tg("o2l","L","o2l ar")}</div></td>
       <td class="h">${inp("h3","memo")}</td>
       <td class="h">${inp("h4","memo")}</td>
-      <td class="j">${jc("j2")}</td>
     </tr>
     <tr class="r3" data-i="${i}">
       <td class="a">${tg("lab","L","sm")}</td>
       <td class="a">${tg("ua","U","sm")}</td>
       <td class="a">${tg("ekg","E","sm")}</td>
       <td class="a">${tg("rad","R","sm")}</td>
-      <td class="e">${tg("b","B")}</td>
-      <td class="f">${tg("m","m")}</td>
-      <td colspan="2" class="vs" data-i="${i}" data-k="vs"><span class="vstpl"><span class="vsl"></span> /<span class="vsl"></span> -<span class="vsl"></span> -<span class="vsl"></span> -<span class="vsl"></span><span class="vspo2"> - (<span class="vsl"></span> )</span></span></td>
-      <td class="j">${jc("j3")}</td>
+      <td class="e">${tg("b","B","al")}</td>
+      <td class="f">${tg("m","m","ar")}</td>
+      <td colspan="2" class="vs" data-i="${i}" data-k="vs"><span class="vstpl">${vl("SBP")} /${vl("DBP")} -${vl("HR")} -${vl("RR")} -${vl("BT")}<span class="vspo2"> -(${vl("SpO2")})</span></span></td>
     </tr>`;
   }
 
@@ -320,6 +328,7 @@
     $("#cntLabel").textContent = count + "명";
     bindCells();
     scaleToFit();
+    fitAllTodo();
     refreshOut();
   }
 
@@ -344,23 +353,18 @@
     document.querySelectorAll(".tg").forEach(el => {
       el.addEventListener("click", () => { setTg(el, el.classList.contains("off")); refreshOut(); });
     });
-    document.querySelectorAll(".chk").forEach(el => {
-      el.addEventListener("click", () => { setChk(el, !el.classList.contains("on")); refreshOut(); });
-    });
-    document.querySelectorAll(".rt").forEach(el => {
-      el.addEventListener("input", () => { updateJwrap(el); });
-      el.addEventListener("contextmenu", onCtx);
+    document.querySelectorAll(".todoadd").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const box = document.querySelector(`.todobox[data-i="${btn.dataset.i}"]`);
+        const d = newTodoItem(box, "");   // 새 줄 추가 → 포커스
+        fitTodo(box); d.focus(); refreshOut();
+      });
     });
   }
   function setTg(el,on){
     el.classList.toggle("off",!on);
     el.textContent = el.dataset.label;   // 꺼짐 상태는 CSS로 회색/인쇄시 투명
     if (el.dataset.k === "s") updateSpo2(el.dataset.i);   // S ↔ V/S SpO2 괄호 연동
-  }
-  // 완료 체크 괄호: on이면 ( + ), 아니면 빈 괄호(넓게)
-  function setChk(el,on){
-    el.classList.toggle("on",on);
-    el.innerHTML = on ? "(&nbsp;+&nbsp;)" : "(&nbsp;&nbsp;&nbsp;)";
   }
   // S 토글이 켜져 있으면 V/S 칸 끝에 (SpO2) 괄호를 보이게
   function updateSpo2(i){
@@ -369,13 +373,34 @@
     if (!s || !vs) return;
     vs.classList.toggle("son", !s.classList.contains("off"));
   }
-  // 오른쪽 칸에 내용이 있으면 체크 괄호를 보이게, 비면 숨기고 체크 해제
-  function updateJwrap(rt){
-    const wrap = rt.closest(".jwrap"); if (!wrap) return;
-    const has = rt.textContent.trim().length > 0;
-    wrap.classList.toggle("has", has);
-    if (!has){ const c = wrap.querySelector(".chk"); if (c) setChk(c, false); }
+
+  /* ── 할 일 리스트 ─────────────────────────────────────── */
+  function newTodoItem(box, html){
+    const d = document.createElement("div");
+    d.className = "todoitem"; d.contentEditable = "true";
+    if (html) d.innerHTML = html;
+    d.addEventListener("input", () => { fitTodo(box); refreshOut(); });
+    d.addEventListener("contextmenu", onCtx);
+    d.addEventListener("keydown", ev => {
+      if (ev.key === "Enter"){ ev.preventDefault(); const nd = newTodoItem(box, ""); fitTodo(box); nd.focus(); refreshOut(); }
+    });
+    d.addEventListener("blur", () => {
+      if (!d.textContent.trim()){ d.remove(); fitTodo(box); refreshOut(); }   // 빈 줄은 자동 삭제
+    });
+    box.appendChild(d);
+    return d;
   }
+  // 2열(우측부터)에 다 안 들어가면 글씨를 줄여서 맞춤
+  function fitTodo(box){
+    if (!box) return;
+    box.style.height = (box.closest("td").clientHeight - 1) + "px";
+    let fs = 8.5; box.style.fontSize = fs + "pt";
+    let guard = 0;
+    while (box.scrollWidth > box.clientWidth + 1 && fs > 5.5 && guard++ < 40){
+      fs -= 0.5; box.style.fontSize = fs + "pt";
+    }
+  }
+  function fitAllTodo(){ document.querySelectorAll(".todobox").forEach(fitTodo); }
 
   /* ── 상태 수집 / 적용 (DOM이 단일 진실원) ─────────────── */
   function collect(){
@@ -386,8 +411,10 @@
         const el = document.querySelector(`[data-i="${i}"][data-k="${k}"]`);
         if (!el) return;
         if (el.classList.contains("tg")) { if (!el.classList.contains("off")) o[k] = 1; }
-        else if (el.classList.contains("chk")) { if (el.classList.contains("on")) o[k] = 1; }
-        else if (el.classList.contains("rt")) { if (el.textContent.trim()) o[k] = el.innerHTML; }
+        else if (el.classList.contains("todobox")) {
+          const items = [...el.querySelectorAll(".todoitem")].filter(x => x.textContent.trim()).map(x => x.innerHTML);
+          if (items.length) o[k] = items;
+        }
         else if (el.value) o[k] = el.value;
       });
       out.push(o);
@@ -405,8 +432,11 @@
         const el = document.querySelector(`[data-i="${i}"][data-k="${k}"]`);
         if (!el) return;
         if (el.classList.contains("tg")) setTg(el, !!o[k]);
-        else if (el.classList.contains("chk")) setChk(el, !!o[k]);
-        else if (el.classList.contains("rt")) { el.innerHTML = o[k] || ""; updateJwrap(el); }
+        else if (el.classList.contains("todobox")) {
+          el.innerHTML = "";
+          (Array.isArray(o[k]) ? o[k] : []).forEach(h => newTodoItem(el, h));
+          fitTodo(el);
+        }
         else el.value = o[k] || "";
       });
     }
@@ -574,7 +604,7 @@
     else if (act === "hl")   document.execCommand("hiliteColor", false, v);
     else if (act === "bold") document.execCommand("bold");
     else if (act === "clear"){ document.execCommand("removeFormat"); document.execCommand("hiliteColor", false, "transparent"); }
-    updateJwrap(t);
+    const box = t.closest(".todobox"); if (box) fitTodo(box);
     refreshOut();
   }
   document.addEventListener("click", e => {
