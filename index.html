@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#334155">
+<title>인계장</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="인계장">
+<style>
+  :root{
+    --ink:#000;
+    --line:0.5pt solid #000;
+    --guide:#e2e8f0;
+    --ph:#cbd5e1;
+    --fs-name:9.5pt;
+    --fs-cell:9pt;
+    --fs-memo:8.5pt;
+    --fs-mini:7.5pt;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:#f1f5f9;
+    font-family:'맑은 고딕','Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+    color:#0f172a;
+    -webkit-text-size-adjust:100%;
+  }
+
+  /* ───────── 툴바 ───────── */
+  .bar{
+    position:sticky; top:0; z-index:20;
+    background:#334155; color:#fff;
+    padding:8px 10px;
+    display:flex; flex-wrap:wrap; gap:6px; align-items:center;
+    box-shadow:0 1px 4px rgba(0,0,0,.25);
+  }
+  .bar b{font-size:14px; margin-right:4px; letter-spacing:.5px}
+  .bar button{
+    font:inherit; font-size:13px;
+    background:#475569; color:#fff; border:0; border-radius:6px;
+    padding:6px 10px; cursor:pointer; white-space:nowrap;
+  }
+  .bar button:hover{background:#64748b}
+  .bar button.primary{background:#0ea5e9}
+  .bar button.primary:hover{background:#38bdf8}
+  .bar button.danger{background:#9f1239}
+  .bar button.danger:hover{background:#be123c}
+  .cnt{display:flex; align-items:center; gap:4px; background:#475569; border-radius:6px; padding:2px 4px}
+  .cnt button{padding:3px 9px; background:transparent; font-size:15px; line-height:1}
+  .cnt span{font-size:13px; min-width:56px; text-align:center}
+  .sp{flex:1}
+  .hint{font-size:11px; color:#cbd5e1; width:100%; margin-top:2px}
+
+  /* ───────── 연동 패널 ───────── */
+  .sync{display:none; background:#1e293b; color:#e2e8f0; padding:10px; gap:8px; flex-direction:column}
+  .sync.open{display:flex}
+  .sync .row{display:flex; gap:6px; align-items:center; flex-wrap:wrap}
+  .sync label{font-size:12px; color:#94a3b8; width:100%}
+  .sync textarea{
+    width:100%; height:58px; resize:vertical;
+    font-family:ui-monospace,Menlo,Consolas,monospace; font-size:11px;
+    border-radius:6px; border:1px solid #475569; background:#0f172a; color:#e2e8f0; padding:6px;
+  }
+  .sync button{
+    font:inherit; font-size:12px; background:#475569; color:#fff;
+    border:0; border-radius:6px; padding:5px 10px; cursor:pointer;
+  }
+  .sync button:hover{background:#64748b}
+
+  /* ───────── 용지 ───────── */
+  .stage{padding:14px; display:flex; justify-content:center}
+  .sheet{
+    width:17cm;
+    background:#fff;
+    box-shadow:0 2px 12px rgba(15,23,42,.18);
+    padding:0;
+    transform-origin:top center;
+  }
+  table.form{
+    width:17cm; table-collapse:collapse; border-collapse:collapse;
+    table-layout:fixed;
+  }
+  table.form td{
+    padding:0 1px; margin:0;
+    vertical-align:middle;
+    overflow:hidden;
+    border:0;
+  }
+
+  /* 블록 테두리 — ODT 원본 규칙
+     ※ 위 `table.form td{border:0}`보다 특이도가 높아야 해서 전부 table.form 접두사 유지 */
+  table.form tr.r1 td{border-top:var(--line)}
+  table.form tr.r3 td{border-bottom:var(--line)}
+  table.form td.name{border:var(--line)}                      /* 이름칸 전체 박스 */
+  table.form td.f{border-right:var(--line)}                   /* special V/S 우측 구분선 */
+  table.form td.gut{border-top:var(--line);border-bottom:var(--line)}  /* 얇은 거터(rowspan 3) */
+
+  /* 화면 전용 셀 가이드 */
+  @media screen{
+    table.form td{outline:1px dotted var(--guide); outline-offset:-1px}
+    td.name{outline:0}
+  }
+
+  /* ───────── 입력 요소 ───────── */
+  input.f{
+    width:100%; border:0; background:transparent; outline:0;
+    font-family:inherit; color:var(--ink);
+    font-size:var(--fs-cell); padding:0 1px; margin:0;
+    line-height:1.1;
+  }
+  input.f::placeholder{color:var(--ph)}
+  input.f:focus{background:#e0f2fe}
+  input.nm{font-size:var(--fs-name); text-align:center; font-weight:600}
+  input.memo{font-size:var(--fs-memo)}
+  input.mini{font-size:var(--fs-mini); text-align:center}
+  input.ctr{text-align:center}
+
+  /* 토글 (고정 라벨: 켜짐=인쇄됨) */
+  .tg{
+    display:block; width:100%; min-height:1.15em; text-align:center; cursor:pointer;
+    font-size:var(--fs-cell); line-height:1.15;
+    color:var(--ink); user-select:none; white-space:nowrap;
+  }
+  .tg.sm{font-size:var(--fs-mini)}
+  .tg.off{color:var(--ph)}
+  .tg:hover{background:#e0f2fe}
+
+  td.vs{position:relative}
+  .vsbox{width:100%}
+
+  .nmwrap{display:flex; flex-direction:column; justify-content:center; height:100%; gap:0}
+
+  /* ───────── 인쇄 ───────── */
+  @page{ size:A4 portrait; margin:1.401cm 2cm; }
+  @media print{
+    body{background:#fff}
+    .bar,.sync,.hint{display:none !important}
+    .stage{padding:0; display:block}
+    .sheet{width:17cm; box-shadow:none; transform:none !important}
+    table.form td{outline:0 !important}
+    .tg.off{color:transparent !important}
+    input.f:focus{background:transparent}
+    input.f::placeholder{color:transparent !important}
+    html,body{width:17cm}
+  }
+</style>
+</head>
+<body>
+
+<div class="bar no-print">
+  <b>인계장</b>
+  <div class="cnt">
+    <button id="minus" title="환자 수 줄이기">−</button>
+    <span id="cntLabel">13명</span>
+    <button id="plus" title="환자 수 늘리기">+</button>
+  </div>
+  <button id="printBtn" class="primary">인쇄</button>
+  <button id="syncBtn">연동</button>
+  <button id="vsBtn" title="모든 V/S 칸에 같은 문구 넣기">V/S 일괄</button>
+  <button id="clearBtn" class="danger">전체 지우기</button>
+  <div class="sp"></div>
+  <div class="hint">저장 안 됨 — 새로고침하면 다 날아가요. 옮기려면 <b>연동</b>으로 코드 복사.</div>
+</div>
+
+<div class="sync no-print" id="syncpanel">
+  <label>내보내기 — 이 코드를 복사해서 다른 기기 인계장에 붙여넣으세요</label>
+  <textarea id="sync-out" readonly></textarea>
+  <div class="row">
+    <button id="syncCopy">복사</button>
+    <button id="syncSave">.txt로 저장</button>
+  </div>
+  <label>가져오기 — 코드를 붙여넣고 적용</label>
+  <textarea id="sync-in" placeholder="HND1:..."></textarea>
+  <div class="row">
+    <button id="syncApply">적용</button>
+    <button id="syncOpen">파일 열기</button>
+    <input type="file" id="syncFile" accept=".txt,text/plain" style="display:none">
+  </div>
+</div>
+
+<div class="stage">
+  <div class="sheet" id="sheet">
+    <table class="form">
+      <colgroup>
+        <col style="width:0.711cm"><col style="width:0.711cm"><col style="width:0.711cm">
+        <col style="width:2.133cm">
+        <col style="width:1.065cm"><col style="width:1.067cm">
+        <col style="width:0.192cm">
+        <col style="width:3.47cm"><col style="width:3.47cm"><col style="width:3.473cm">
+      </colgroup>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const $ = s => document.querySelector(s);
+
+  const MAX = 13;
+  const USABLE_CM = 29.7 - 1.401*2;   // 26.898cm
+  const MIN_ROW_CM = 0.681;           // ODT 원본 행 높이
+  const MAX_ROW_CM = 0.95;            // 인원 적을 때 과하게 늘어나지 않게
+  let count = MAX;
+
+  // 셀 키 목록 (가져오기/내보내기 순서 고정)
+  const KEYS = ["io","iv","lab","ua","rad","name","dc","bp","bpr","s","o2","b","m",
+                "h1","h2","j1","h3","h4","j2","vs","j3"];
+
+  /* ── 한 환자 블록 3행 생성 ───────────────────────────── */
+  function block(i){
+    // 라벨은 항상 DOM에 있고, 표시 여부만 .off 로 제어 (비면 클릭 영역이 0이 됨)
+    const tg  = (k,label,cls) =>
+      `<span class="tg off ${cls||""}" data-k="${k}" data-label="${label}" data-i="${i}" title="${label}">${label}</span>`;
+    const inp = (k,cls,ph,ml) =>
+      `<input class="f ${cls||""}" data-k="${k}" data-i="${i}" placeholder="${ph||""}"${ml?` maxlength="${ml}"`:""}>`;
+
+    return `
+    <tr class="r1" data-i="${i}">
+      <td colspan="3" class="a">${tg("io","I/O")}</td>
+      <td rowspan="3" class="name">
+        <div class="nmwrap">
+          ${inp("name","nm","이름")}
+          ${tg("dc","d/c","sm")}
+        </div>
+      </td>
+      <td class="e">${inp("bp","ctr mini","BP·T",4)}</td>
+      <td class="f">${inp("bpr","ctr mini","",4)}</td>
+      <td rowspan="3" class="gut"></td>
+      <td class="h">${inp("h1","memo")}</td>
+      <td class="h">${inp("h2","memo")}</td>
+      <td class="j">${inp("j1","memo")}</td>
+    </tr>
+    <tr class="r2" data-i="${i}">
+      <td colspan="3" class="a">${inp("iv","ctr mini","IV일",5)}</td>
+      <td class="e">${tg("s","S")}</td>
+      <td class="f">${inp("o2","ctr mini","O2",4)}</td>
+      <td class="h">${inp("h3","memo")}</td>
+      <td class="h">${inp("h4","memo")}</td>
+      <td class="j">${inp("j2","memo")}</td>
+    </tr>
+    <tr class="r3" data-i="${i}">
+      <td class="a">${tg("lab","L","sm")}</td>
+      <td class="a">${tg("ua","U","sm")}</td>
+      <td class="a">${tg("rad","R","sm")}</td>
+      <td class="e">${tg("b","B")}</td>
+      <td class="f">${tg("m","m")}</td>
+      <td colspan="2" class="vs">${inp("vs","memo vsbox","")}</td>
+      <td class="j">${inp("j3","memo")}</td>
+    </tr>`;
+  }
+
+  /* ── 렌더 ─────────────────────────────────────────────── */
+  function render(keep){
+    const data = keep ? collect() : null;
+    let html = "";
+    for (let i=0;i<count;i++) html += block(i);
+    $("#rows").innerHTML = html;
+    fitRows();
+    if (data) apply(data, true);
+    $("#cntLabel").textContent = count + "명";
+    bindCells();
+    scaleToFit();
+    refreshOut();
+  }
+
+  // 연동 패널이 열린 채로 내용을 더 입력하면 코드가 옛날 상태로 남는 걸 방지
+  function refreshOut(){
+    if ($("#syncpanel").classList.contains("open")) $("#sync-out").value = encode(exportStr());
+  }
+
+  // 인원 수에 맞춰 행 높이를 늘려 한 페이지를 꽉 채움
+  // ※ cm로 주면 브라우저 px 반올림이 39행에 누적돼 페이지를 넘김 → 정수 px로 고정
+  const PX_CM = 96/2.54;
+  function fitRows(){
+    const usablePx = Math.floor(USABLE_CM * PX_CM) - 2;          // 안전 여유 2px
+    const per = Math.max(
+      Math.ceil(MIN_ROW_CM * PX_CM),
+      Math.min(Math.floor(MAX_ROW_CM * PX_CM), Math.floor(usablePx/(count*3)))
+    );
+    document.querySelectorAll("#rows tr").forEach(tr => tr.style.height = per+"px");
+  }
+
+  function bindCells(){
+    document.querySelectorAll(".tg").forEach(el => {
+      el.addEventListener("click", () => { setTg(el, el.classList.contains("off")); refreshOut(); });
+    });
+  }
+  function setTg(el,on){
+    el.classList.toggle("off",!on);
+    el.textContent = el.dataset.label;   // 꺼짐 상태는 CSS로 회색/인쇄시 투명
+  }
+
+  /* ── 상태 수집 / 적용 (DOM이 단일 진실원) ─────────────── */
+  function collect(){
+    const out = [];
+    for (let i=0;i<count;i++){
+      const o = {};
+      KEYS.forEach(k => {
+        const el = document.querySelector(`[data-i="${i}"][data-k="${k}"]`);
+        if (!el) return;
+        if (el.classList.contains("tg")) { if (!el.classList.contains("off")) o[k] = 1; }
+        else if (el.value) o[k] = el.value;
+      });
+      out.push(o);
+    }
+    return out;
+  }
+  function apply(list, silent){
+    if (!silent){
+      const need = Math.min(MAX, Math.max(1, list.length));
+      if (need !== count){ count = need; render(false); }
+    }
+    for (let i=0;i<count;i++){
+      const o = list[i] || {};
+      KEYS.forEach(k => {
+        const el = document.querySelector(`[data-i="${i}"][data-k="${k}"]`);
+        if (!el) return;
+        if (el.classList.contains("tg")) setTg(el, !!o[k]);
+        else el.value = o[k] || "";
+      });
+    }
+  }
+  function isEmpty(){
+    return collect().every(o => Object.keys(o).length === 0);
+  }
+
+  /* ── 연동: XOR(고정키) → base64, 접두사 HND1: ─────────── */
+  const XKEY = "handoff-sheet-sync-key";
+  function xorBytes(bytes){
+    const k = new TextEncoder().encode(XKEY);
+    const out = new Uint8Array(bytes.length);
+    for (let i=0;i<bytes.length;i++) out[i] = bytes[i] ^ k[i % k.length];
+    return out;
+  }
+  function encode(str){
+    const b = xorBytes(new TextEncoder().encode(str));
+    let bin = ""; b.forEach(x => bin += String.fromCharCode(x));
+    return "HND1:" + btoa(bin);
+  }
+  function decode(code){
+    code = (code||"").trim();
+    if (!code.startsWith("HND1:")) return code;         // 평문 JSON도 하위호환
+    const bin = atob(code.slice(5));
+    const bytes = xorBytes(Uint8Array.from(bin, c => c.charCodeAt(0)));
+    return new TextDecoder().decode(bytes);
+  }
+  function exportStr(){ return JSON.stringify({ v:1, n:count, p:collect() }); }
+  function flash(btn, text){ const o = btn.textContent; btn.textContent = text; setTimeout(()=>btn.textContent=o,1200); }
+
+  function applyStr(raw){
+    const str = decode((raw||"").trim());
+    if (!str){ alert("불러올 코드나 파일이 없어요."); return; }
+    let data; try { data = JSON.parse(str); } catch { alert("코드 형식이 올바르지 않아요."); return; }
+    const list = Array.isArray(data.p) ? data.p : (Array.isArray(data) ? data : null);
+    if (!list){ alert("인계장 데이터를 찾을 수 없어요."); return; }
+    const filled = list.filter(o => o && Object.keys(o).length).length;
+    if (!confirm(`지금 화면을 불러온 데이터(${filled}명 기재)로 덮어쓸까요?`)) return;
+    count = Math.min(MAX, Math.max(1, data.n || list.length || MAX));
+    render(false);
+    apply(list, true);
+    $("#syncpanel").classList.remove("open");
+    alert("적용됐어요.");
+  }
+
+  /* ── 툴바 ─────────────────────────────────────────────── */
+  $("#plus").addEventListener("click", () => { if (count<MAX){ count++; render(true);} });
+  $("#minus").addEventListener("click", () => {
+    if (count<=1) return;
+    const last = collect()[count-1];
+    if (Object.keys(last).length && !confirm("마지막 줄에 적힌 내용이 지워져요. 계속할까요?")) return;
+    count--; render(true);
+  });
+  $("#printBtn").addEventListener("click", () => window.print());
+  $("#clearBtn").addEventListener("click", () => {
+    if (isEmpty() || confirm("전체 내용을 지울까요? 되돌릴 수 없어요.")) render(false);
+  });
+  $("#vsBtn").addEventListener("click", () => {
+    const t = prompt("모든 V/S 칸에 넣을 문구", "- (      )");
+    if (t === null) return;
+    document.querySelectorAll('[data-k="vs"]').forEach(el => el.value = t);
+  });
+
+  $("#syncBtn").addEventListener("click", () => {
+    const p = $("#syncpanel");
+    if (p.classList.contains("open")){ p.classList.remove("open"); return; }
+    $("#sync-out").value = encode(exportStr());
+    $("#sync-in").value = "";
+    p.classList.add("open");
+  });
+  $("#syncCopy").addEventListener("click", async () => {
+    const el = $("#sync-out");
+    try { await navigator.clipboard.writeText(el.value); }
+    catch { el.select(); document.execCommand("copy"); }
+    flash($("#syncCopy"), "복사됨!");
+  });
+  $("#syncSave").addEventListener("click", () => {
+    const blob = new Blob([encode(exportStr())], { type:"text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "handoff-" + new Date().toISOString().slice(0,10) + ".txt";
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  });
+  $("#syncApply").addEventListener("click", () => applyStr($("#sync-in").value));
+  $("#syncOpen").addEventListener("click", () => $("#syncFile").click());
+  $("#syncFile").addEventListener("change", e => {
+    const f = e.target.files[0]; if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => applyStr(rd.result);
+    rd.readAsText(f);
+    e.target.value = "";
+  });
+
+  /* ── 폰에서 가로폭 맞추기 (인쇄엔 영향 없음) ──────────── */
+  function scaleToFit(){
+    const sheet = $("#sheet");
+    sheet.style.transform = "none";
+    sheet.style.marginBottom = "";
+    const avail = document.querySelector(".stage").clientWidth - 4;
+    const w = sheet.offsetWidth;
+    if (w > avail){
+      const s = avail / w;
+      sheet.style.transform = `scale(${s})`;
+      sheet.style.marginBottom = (sheet.offsetHeight*(s-1)) + "px";
+    }
+  }
+  window.addEventListener("resize", scaleToFit);
+  $("#rows").addEventListener("input", refreshOut);
+
+  /* ── 실수로 닫기 방지 (저장은 안 함) ──────────────────── */
+  window.addEventListener("beforeunload", e => {
+    if (!isEmpty()){ e.preventDefault(); e.returnValue = ""; }
+  });
+
+  render(false);
+
+  if ("serviceWorker" in navigator)
+    window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(()=>{}));
+})();
+</script>
+</body>
+</html>
