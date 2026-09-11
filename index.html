@@ -144,11 +144,22 @@
   }
   .rt:focus{background:#e0f2fe}
   .chk{
-    display:none; font-size:var(--fs-mini); color:var(--ink);
-    cursor:pointer; white-space:nowrap; user-select:none; padding:0 1px; font-weight:600;
+    display:none; margin-left:auto; font-size:11pt; color:var(--ink);
+    cursor:pointer; white-space:nowrap; user-select:none; padding:0 2px; font-weight:600; line-height:1;
   }
   .jwrap.has .chk{display:inline}
   .chk:hover{background:#e0f2fe}
+
+  /* O2 유량 입력 + L 토글 (우측정렬) */
+  .o2wrap{display:flex; align-items:center; width:100%}
+  .o2wrap .o2in{flex:1; min-width:0; text-align:right; padding-right:1px}
+  .tg.o2l{width:auto; flex:0 0 auto; padding:0 1px}
+
+  /* 정규 V/S 손글씨 템플릿 (SBP/DBP-HR-RR-BT-SpO2) */
+  .vstpl{font-size:var(--fs-cell); white-space:nowrap; color:var(--ink); letter-spacing:0}
+  .vsl{display:inline-block; min-width:0.8cm}
+  .vspo2{display:none}
+  td.vs.son .vspo2{display:inline}
 
   /* 우클릭 서식 메뉴 */
   .ctxmenu{
@@ -197,7 +208,6 @@
   </div>
   <button id="printBtn" class="primary">인쇄</button>
   <button id="syncBtn">연동</button>
-  <button id="vsBtn" title="모든 V/S 칸에 같은 문구 넣기">V/S 일괄</button>
   <button id="clearBtn" class="danger">전체 지우기</button>
   <div class="sp"></div>
   <div class="hint">저장 안 됨 — 새로고침하면 다 날아가요. 옮기려면 <b>연동</b>으로 코드 복사.</div>
@@ -246,8 +256,8 @@
   let count = MAX;
 
   // 셀 키 목록 (가져오기/내보내기 순서 고정)
-  const KEYS = ["io","iv","lab","ua","ekg","rad","name","dc","bp","bpr","s","o2","b","m",
-                "h1","h2","j1","j1c","h3","h4","j2","j2c","vs","j3","j3c"];
+  const KEYS = ["io","iv","lab","ua","ekg","rad","name","dc","bp","bpr","s","o2","o2l","b","m",
+                "h1","h2","j1","j1c","h3","h4","j2","j2c","j3","j3c"];
 
   /* ── 한 환자 블록 3행 생성 ───────────────────────────── */
   function block(i){
@@ -260,7 +270,7 @@
     const jc = (k) =>
       `<div class="jwrap">`
       + `<div class="f memo rt" data-k="${k}" data-i="${i}" contenteditable="true"></div>`
-      + `<span class="chk" data-k="${k}c" data-i="${i}" title="완료 표시 (클릭: + 토글)">(&nbsp;)</span>`
+      + `<span class="chk" data-k="${k}c" data-i="${i}" title="완료 표시 (클릭: + 토글)">(&nbsp;&nbsp;&nbsp;)</span>`
       + `</div>`;
 
     return `
@@ -272,8 +282,8 @@
           ${tg("dc","d/c","sm")}
         </div>
       </td>
-      <td class="e">${inp("bp","ctr mini","BP",4)}</td>
-      <td class="f">${inp("bpr","ctr mini","T",4)}</td>
+      <td class="e">${tg("bp","BP")}</td>
+      <td class="f">${tg("bpr","T")}</td>
       <td rowspan="3" class="gut"></td>
       <td class="h">${inp("h1","memo")}</td>
       <td class="h">${inp("h2","memo")}</td>
@@ -282,7 +292,7 @@
     <tr class="r2" data-i="${i}">
       <td colspan="4" class="a">${inp("iv","ctr mini","IV일",5)}</td>
       <td class="e">${tg("s","S")}</td>
-      <td class="f">${inp("o2","ctr mini","O2",4)}</td>
+      <td class="f"><div class="o2wrap">${inp("o2","mini o2in","",4)}${tg("o2l","L","sm o2l")}</div></td>
       <td class="h">${inp("h3","memo")}</td>
       <td class="h">${inp("h4","memo")}</td>
       <td class="j">${jc("j2")}</td>
@@ -294,7 +304,7 @@
       <td class="a">${tg("rad","R","sm")}</td>
       <td class="e">${tg("b","B")}</td>
       <td class="f">${tg("m","m")}</td>
-      <td colspan="2" class="vs">${inp("vs","memo vsbox","")}</td>
+      <td colspan="2" class="vs" data-i="${i}" data-k="vs"><span class="vstpl"><span class="vsl"></span> /<span class="vsl"></span> -<span class="vsl"></span> -<span class="vsl"></span> -<span class="vsl"></span><span class="vspo2"> - (<span class="vsl"></span> )</span></span></td>
       <td class="j">${jc("j3")}</td>
     </tr>`;
   }
@@ -345,11 +355,19 @@
   function setTg(el,on){
     el.classList.toggle("off",!on);
     el.textContent = el.dataset.label;   // 꺼짐 상태는 CSS로 회색/인쇄시 투명
+    if (el.dataset.k === "s") updateSpo2(el.dataset.i);   // S ↔ V/S SpO2 괄호 연동
   }
-  // 완료 체크 괄호: on이면 (+), 아니면 빈 괄호
+  // 완료 체크 괄호: on이면 ( + ), 아니면 빈 괄호(넓게)
   function setChk(el,on){
     el.classList.toggle("on",on);
-    el.innerHTML = on ? "(+)" : "(&nbsp;)";
+    el.innerHTML = on ? "(&nbsp;+&nbsp;)" : "(&nbsp;&nbsp;&nbsp;)";
+  }
+  // S 토글이 켜져 있으면 V/S 칸 끝에 (SpO2) 괄호를 보이게
+  function updateSpo2(i){
+    const s  = document.querySelector(`[data-i="${i}"][data-k="s"]`);
+    const vs = document.querySelector(`[data-i="${i}"][data-k="vs"]`);
+    if (!s || !vs) return;
+    vs.classList.toggle("son", !s.classList.contains("off"));
   }
   // 오른쪽 칸에 내용이 있으면 체크 괄호를 보이게, 비면 숨기고 체크 해제
   function updateJwrap(rt){
@@ -446,11 +464,6 @@
   $("#printBtn").addEventListener("click", () => window.print());
   $("#clearBtn").addEventListener("click", () => {
     if (isEmpty() || confirm("전체 내용을 지울까요? 되돌릴 수 없어요.")) render(false);
-  });
-  $("#vsBtn").addEventListener("click", () => {
-    const t = prompt("모든 V/S 칸에 넣을 문구", "- (      )");
-    if (t === null) return;
-    document.querySelectorAll('[data-k="vs"]').forEach(el => el.value = t);
   });
 
   $("#syncBtn").addEventListener("click", () => {
