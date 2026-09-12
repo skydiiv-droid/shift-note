@@ -1,6 +1,6 @@
 // 인계장 PWA service worker
 // ※ 재배포할 때마다 CACHE 버전을 반드시 올릴 것 (안 올리면 업데이트가 반영 안 됨)
-const CACHE = "handoff-v6";
+const CACHE = "handoff-v7";
 const ASSETS = [
   "./",
   "./index.html",

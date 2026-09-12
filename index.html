@@ -134,7 +134,7 @@
 
   /* O2 유량 입력 + L 토글 (우측정렬) */
   .o2wrap{display:flex; align-items:center; width:100%}
-  .o2wrap .o2in{flex:1; min-width:0; text-align:left; padding-left:2px}
+  .o2wrap .o2in{flex:1; min-width:0; text-align:right; padding-right:2px; font-size:var(--fs-cell)}
   .tg.o2l{width:auto; flex:0 0 auto; padding:0 2px}
 
   /* 정규 V/S 손글씨 템플릿 (SBP/DBP-HR-RR-BT-SpO2) — 각 칸에 흐린 가이드 라벨 */
@@ -316,7 +316,7 @@
     <tr class="r2" data-i="${i}">
       <td colspan="4" class="a">${inp("iv","ctr mini","IV일",5)}</td>
       <td class="e">${tg("s","S","al")}</td>
-      <td class="f"><div class="o2wrap">${inp("o2","mini o2in","",4)}${tg("o2l","L","o2l ar")}</div></td>
+      <td class="f"><div class="o2wrap">${inp("o2","o2in","",4)}${tg("o2l","L","o2l ar")}</div></td>
     </tr>
     <tr class="r3" data-i="${i}">
       <td class="a">${tg("lab","L","sm")}</td>
@@ -386,14 +386,15 @@
   }
 
   /* ── 할 일 리스트 (메모 7칸 병합, 3열 우측→좌측 채움) ──── */
-  // 한 항목 = [완료 괄호][편집 텍스트]. wrap._items 가 순서의 진실원.
+  // 한 항목 = [편집 텍스트][완료 괄호]. wrap._items 가 순서의 진실원.
+  const CHK_ON = "(&nbsp;+&nbsp;)", CHK_OFF = "(&nbsp;&nbsp;&nbsp;)";   // 좀 더 넓게
   function makeChk(done){
     const c = document.createElement("span");
     c.className = "tchk" + (done ? " on" : "");
-    c.innerHTML = done ? "(+)" : "(&nbsp;)";
+    c.innerHTML = done ? CHK_ON : CHK_OFF;
     c.addEventListener("click", () => {
       const on = !c.classList.contains("on");
-      c.classList.toggle("on", on); c.innerHTML = on ? "(+)" : "(&nbsp;)";
+      c.classList.toggle("on", on); c.innerHTML = on ? CHK_ON : CHK_OFF;
       refreshOut();
     });
     return c;
@@ -403,10 +404,18 @@
     const chk = makeChk(done);
     const tx = document.createElement("span");
     tx.className = "ttext"; tx.contentEditable = "true"; if (html) tx.innerHTML = html;
-    tx.addEventListener("input", () => { layoutTodo(wrap); refreshOut(); });   // 길어지면 재배치(커서 보존)
+    // ⚠ 한글 IME: 조합(composition) 중에 DOM을 재부착하면 자모가 깨짐 → 조합 중엔 재배치 금지
+    tx.addEventListener("compositionstart", () => { tx._composing = true; });
+    tx.addEventListener("compositionend",   () => { tx._composing = false; layoutTodo(wrap); refreshOut(); });
+    tx.addEventListener("input", () => {
+      if (tx._composing) { refreshOut(); return; }   // 조합 중엔 배치 미루기(글자만 들어가게)
+      layoutTodo(wrap); refreshOut();
+    });
     tx.addEventListener("contextmenu", onCtx);
     tx.addEventListener("keydown", ev => {
-      if (ev.key === "Enter"){ ev.preventDefault();
+      if (ev.key === "Enter"){
+        if (ev.isComposing || ev.keyCode === 229) return;   // 한글 조합 확정용 Enter는 새 줄 생성 안 함
+        ev.preventDefault();
         const nit = addTodoItem(wrap, "", 0); layoutTodo(wrap); nit.querySelector(".ttext").focus(); refreshOut();
       }
     });
