@@ -155,29 +155,27 @@
   .vzone.wrapmode .todocol{line-height:1.5}
   .vzone.wrapmode .todoitem{align-items:flex-start; min-height:0}
 
-  /* 왼쪽 위: 가로 할 일 (flex-wrap, 왼→오) */
+  /* 왼쪽 위: 가로 할 일 / 왼쪽 중간: 협진 (둘 다 flex-wrap 가로 흐름) */
   .hzone{position:absolute; top:0; left:0; overflow:hidden}
-  .hrow{display:flex; flex-wrap:wrap; align-content:flex-start; gap:0 5px; line-height:1.35; padding:16px 1px 0 2px; height:100%}
+  .czone{position:absolute; left:0; overflow:hidden}
+  .hrow,.crow{display:flex; flex-wrap:wrap; align-content:flex-start; gap:0 5px; line-height:1.35; height:100%}
+  .hrow{padding:16px 1px 0 2px}       /* 왼쪽 위 + 버튼 자리 */
+  .crow{padding:1px 1px 0 16px}       /* 왼쪽 협진 + 버튼(왼쪽) 자리 */
 
-  /* 항목 공통: [텍스트][괄호] */
+  /* 항목 공통: [텍스트][마커] */
   .todoitem{display:flex; align-items:baseline; gap:2px; overflow:hidden; color:var(--ink); min-height:1.2em}
   .todoitem .ttext{outline:0; overflow:hidden; white-space:nowrap; word-break:break-all}
   .todoitem .ttext:focus{background:#e0f2fe}
   .tchk{flex:0 0 auto; cursor:pointer; user-select:none; color:var(--ink)}
   .tchk:hover{background:#e0f2fe}
+  .tmark{flex:0 0 auto; color:var(--ink); user-select:none}   /* 협진 ▶ */
   /* 세로: 폭 꽉 채우고 우측정렬, 괄호는 오른쪽 */
   .vzone .todoitem{justify-content:flex-end}
   .vzone .todoitem .ttext{flex:1; min-width:0; text-align:right}
-  /* 가로: 내용만큼만, 좌측정렬, 괄호로 구분 */
-  .hrow .todoitem{display:inline-flex; max-width:100%}
-  .hrow .todoitem .ttext{flex:0 1 auto; text-align:left}
-
-  /* 협진 칸 (왼쪽 중간, V/S 위): 내용 있으면 우측에 ▶ */
-  .cons{position:absolute; left:0; display:flex; align-items:center; gap:2px; overflow:hidden}
-  .cons .consin{flex:1; min-width:0; outline:0; white-space:nowrap; overflow:hidden; font-size:var(--fs-memo)}
-  .cons .consin:focus{background:#e0f2fe}
-  .cons .consmark{flex:0 0 auto; color:var(--ink); display:none; font-size:var(--fs-memo)}
-  .cons.has .consmark{display:inline}
+  /* 가로(할 일/협진): 내용만큼만, 좌측정렬 */
+  .hrow .todoitem,.crow .todoitem{display:inline-flex; max-width:100%}
+  .hrow .todoitem .ttext,.crow .todoitem .ttext{flex:0 1 auto; text-align:left}
+  .crow .todoitem{gap:0}              /* ED▶ 붙여서 */
 
   /* 왼쪽 아래 V/S (축소) */
   td.todo .vs{position:absolute; left:0; display:flex; align-items:center; overflow:hidden}
@@ -220,7 +218,7 @@
     input.f::placeholder{color:transparent !important}
     .ctxmenu{display:none !important}
     .todoadd{display:none !important}
-    .todoitem .ttext:focus, .cons .consin:focus{background:transparent}
+    .todoitem .ttext:focus{background:transparent}
     /* 형광펜·글씨색이 인쇄에도 그대로 나오게 */
     .sheet, .sheet *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     html,body{width:17cm}
@@ -309,7 +307,8 @@
       +   `<span class="todoadd addV no-print" data-i="${i}" title="세로 할 일 추가">+</span>`
       +   `<div class="hzone"><div class="hrow" data-k="htodo" data-i="${i}"></div></div>`
       +   `<span class="todoadd addH no-print" data-i="${i}" title="가로 할 일 추가">+</span>`
-      +   `<div class="cons"><span class="ttext consin" data-k="cons" data-i="${i}" contenteditable="true"></span><span class="consmark">▶</span></div>`
+      +   `<div class="czone"><div class="crow" data-k="cons" data-i="${i}"></div></div>`
+      +   `<span class="todoadd addC no-print" data-i="${i}" title="협진 추가">+</span>`
       +   `<div class="vs" data-i="${i}" data-k="vs"><span class="vstpl">${vl("SBP")} /${vl("DBP")} -${vl("HR")} -${vl("RR")} -${vl("BT")}<span class="vspo2"> -(${vl("SpO2")})</span></span></div>`
       + `</div>`;
 
@@ -384,17 +383,20 @@
         const it = addTodoItem(z, "", 0); layoutVert(z); it.querySelector(".ttext").focus(); refreshOut();
       });
     });
-    document.querySelectorAll(".addH").forEach(btn => {           // 가로(왼쪽) 추가
-      btn.addEventListener("click", () => {
-        const z = document.querySelector(`.hrow[data-i="${btn.dataset.i}"]`);
-        const it = addTodoItem(z, "", 0); layoutHorz(z); it.querySelector(".ttext").focus(); refreshOut();
+    const addToRow = (sel, btn) => {
+      const z = document.querySelector(`${sel}[data-i="${btn.dataset.i}"]`);
+      const it = addTodoItem(z, "", 0); layoutHorz(z); it.querySelector(".ttext").focus(); refreshOut();
+    };
+    document.querySelectorAll(".addH").forEach(btn => btn.addEventListener("click", () => addToRow(".hrow", btn)));  // 가로 할 일
+    document.querySelectorAll(".addC").forEach(btn => btn.addEventListener("click", () => addToRow(".crow", btn)));  // 협진
+    // 이름 칸: Tab → 다음 환자 이름, Shift+Tab → 이전 환자 이름
+    document.querySelectorAll('[data-k="name"]').forEach(el => {
+      el.addEventListener("keydown", ev => {
+        if (ev.key !== "Tab") return;
+        const i = +el.dataset.i, ni = ev.shiftKey ? i - 1 : i + 1;
+        const next = document.querySelector(`[data-i="${ni}"][data-k="name"]`);
+        if (next){ ev.preventDefault(); next.focus(); next.select && next.select(); }
       });
-    });
-    document.querySelectorAll(".consin").forEach(el => {          // 협진 칸(단일 입력)
-      el.addEventListener("compositionstart", () => { el._composing = true; });
-      el.addEventListener("compositionend",   () => { el._composing = false; layoutCons(el.closest(".cons")); refreshOut(); });
-      el.addEventListener("input", () => { layoutCons(el.closest(".cons")); refreshOut(); });
-      el.addEventListener("contextmenu", onCtx);
     });
   }
   function setTg(el,on){
@@ -424,34 +426,48 @@
     });
     return c;
   }
-  // zone = 항목을 담는 컨테이너(.vzone 또는 .hrow). zone._items 가 순서의 진실원, zone._reflow 가 재배치.
+  function makeArrow(){ const s = document.createElement("span"); s.className = "tmark"; s.textContent = "▶"; return s; }
+  // zone = 항목 컨테이너(.vzone 세로 / .hrow 가로 할 일 / .crow 협진).
+  //  · zone._layout : 전체 재배치(DOM 재부착) — 추가/삭제/편집종료 때만
+  //  · zone._fitFont: 폰트만 조정(재부착 없음) — 타이핑 중 (한글 IME 안 깨지게)
+  function zoneKind(zone){
+    const horizontal = zone.classList.contains("hrow") || zone.classList.contains("crow");
+    return { horizontal, arrow: zone.classList.contains("crow") };
+  }
+  function ensureZoneFns(zone){
+    if (zone._layout) return;
+    const { horizontal } = zoneKind(zone);
+    zone._layout  = horizontal ? () => layoutHorz(zone)   : () => layoutVert(zone);
+    zone._fitFont = horizontal ? () => fitHorzFont(zone)  : () => fitVertFont(zone);
+  }
   function addTodoItem(zone, html, done){
-    if (!zone._reflow) zone._reflow = zone.classList.contains("hrow")
-      ? () => layoutHorz(zone) : () => layoutVert(zone);
+    ensureZoneFns(zone);
     zone._items = zone._items || [];
     const it = document.createElement("div"); it.className = "todoitem";
-    const chk = makeChk(done);
+    const mk = zoneKind(zone).arrow ? makeArrow() : makeChk(done);
     const tx = document.createElement("span");
     tx.className = "ttext"; tx.contentEditable = "true"; if (html) tx.innerHTML = html;
-    // ⚠ 한글 IME: 조합 중 DOM 재부착하면 자모가 깨짐 → 조합 중엔 재배치 보류
+    // ⚠ 한글 IME: 조합 중은 물론, 타이핑 전반에서 항목을 재부착하면 자모/단어가 씹힘
+    //   → 타이핑 중엔 폰트만(_fitFont), 전체 재배치(_layout)는 추가/삭제/편집종료 때만.
     tx.addEventListener("compositionstart", () => { tx._composing = true; });
-    tx.addEventListener("compositionend",   () => { tx._composing = false; zone._reflow(); refreshOut(); });
-    tx.addEventListener("input", () => { if (tx._composing){ refreshOut(); return; } zone._reflow(); refreshOut(); });
+    tx.addEventListener("compositionend",   () => { tx._composing = false; zone._fitFont(); refreshOut(); });
+    tx.addEventListener("input", () => { if (!tx._composing) zone._fitFont(); refreshOut(); });
     tx.addEventListener("contextmenu", onCtx);
     tx.addEventListener("keydown", ev => {
       if (ev.key === "Enter"){
         if (ev.isComposing || ev.keyCode === 229) return;
         ev.preventDefault();
-        const nit = addTodoItem(zone, "", 0); zone._reflow(); nit.querySelector(".ttext").focus(); refreshOut();
+        const nit = addTodoItem(zone, "", 0); zone._layout(); nit.querySelector(".ttext").focus(); refreshOut();
       }
     });
-    tx.addEventListener("blur", () => {
+    tx.addEventListener("blur", () => {                    // 편집 종료 → 정리(재배치는 여기서만 안전)
       if (!tx.textContent.trim()){
         const idx = zone._items.indexOf(it); if (idx >= 0) zone._items.splice(idx,1);
-        it.remove(); zone._reflow(); refreshOut();
+        it.remove();
       }
+      zone._layout(); refreshOut();
     });
-    it.appendChild(tx); it.appendChild(chk);
+    it.appendChild(tx); it.appendChild(mk);
     zone._items.push(it);
     return it;
   }
@@ -530,10 +546,23 @@
     while (hrow.scrollHeight > hzone.clientHeight + 1 && fs > 5 && guard++ < 20){ fs -= 0.5; hrow.style.fontSize = fs + "pt"; }
     restoreCaret(caret);
   }
-  // 협진 칸: 내용 있으면 ▶ 표시
-  function layoutCons(cons){
-    if (!cons) return;
-    cons.classList.toggle("has", cons.querySelector(".consin").textContent.trim().length > 0);
+  // 타이핑 중 폰트만 조정(재부착 없음). 세로: 잘리면 축소→줄바꿈
+  function fitVertFont(vzone){
+    if (!vzone) return;
+    const items = vzone._items || [];
+    const cols = [vzone.querySelector(".vcR"), vzone.querySelector(".vcL")];
+    const setFont = f => cols.forEach(c => c.style.fontSize = f + "pt");
+    const clipped = () => items.some(it => { const t = it.querySelector(".ttext"); return t.scrollWidth > t.clientWidth + 1; });
+    let fs = parseFloat(cols[0].style.fontSize) || 8.5, guard = 0;
+    while (clipped() && fs > 6 && guard++ < 8){ fs -= 0.5; setFont(fs); }
+    if (clipped()){ vzone.classList.add("wrapmode"); items.forEach(it => it.querySelector(".ttext").style.whiteSpace = "normal"); }
+  }
+  // 가로(할 일/협진): 세로로 넘치면 폰트만 축소
+  function fitHorzFont(hrow){
+    if (!hrow) return;
+    const hzone = hrow.parentElement;
+    let fs = parseFloat(hrow.style.fontSize) || 8, guard = 0;
+    while (hrow.scrollHeight > hzone.clientHeight + 1 && fs > 5 && guard++ < 12){ fs -= 0.5; hrow.style.fontSize = fs + "pt"; }
   }
   // V/S: (좁아진) 폭에 맞게 폰트 축소
   function fitVS(vs){
@@ -549,21 +578,22 @@
     const W2 = Math.round(W * 0.5), rowH = H / 3;
     const vsH = Math.round(rowH * 0.8), consH = Math.round(rowH * 0.72), hzH = H - vsH - consH;
     const vz = wrap.querySelector(".vzone"), hz = wrap.querySelector(".hzone"),
-          cons = wrap.querySelector(".cons"), vs = wrap.querySelector(".vs");
+          cz = wrap.querySelector(".czone"), vs = wrap.querySelector(".vs");
     vz.style.width = (W - W2) + "px"; vz.style.height = H + "px";
     vz.querySelectorAll(".todocol").forEach(c => c.style.height = H + "px");
     hz.style.width = W2 + "px"; hz.style.height = hzH + "px";
-    cons.style.top = hzH + "px"; cons.style.width = W2 + "px"; cons.style.height = consH + "px";
+    cz.style.top = hzH + "px"; cz.style.width = W2 + "px"; cz.style.height = consH + "px";
     vs.style.top = (hzH + consH) + "px"; vs.style.width = (W2 - 1) + "px"; vs.style.height = vsH + "px";
     wrap.querySelector(".addV").style.right = "0px";
     wrap.querySelector(".addH").style.left = "0px";
+    const addC = wrap.querySelector(".addC"); addC.style.left = "0px"; addC.style.top = hzH + "px";
   }
   function layoutTodo(wrap){
     if (!wrap) return;
     positionZones(wrap);
     layoutVert(wrap.querySelector(".vzone"));
     layoutHorz(wrap.querySelector(".hrow"));
-    layoutCons(wrap.querySelector(".cons"));
+    layoutHorz(wrap.querySelector(".crow"));
     fitVS(wrap.querySelector(".vs"));
   }
   function layoutAllTodo(){ document.querySelectorAll(".todowrap").forEach(layoutTodo); }
@@ -577,17 +607,17 @@
         const el = document.querySelector(`[data-i="${i}"][data-k="${k}"]`);
         if (!el) return;
         if (el.classList.contains("tg")) { if (!el.classList.contains("off")) o[k] = 1; }
-        else if (el.classList.contains("vzone") || el.classList.contains("hrow")) {  // 세로/가로 할 일
+        else if (el.classList.contains("vzone") || el.classList.contains("hrow") || el.classList.contains("crow")) {  // 세로/가로 할 일/협진
           const items = (el._items || [])
             .filter(it => it.querySelector(".ttext").textContent.trim())
             .map(it => {
               const rec = { t: it.querySelector(".ttext").innerHTML };
-              if (it.querySelector(".tchk").classList.contains("on")) rec.c = 1;
+              const chk = it.querySelector(".tchk");
+              if (chk && chk.classList.contains("on")) rec.c = 1;
               return rec;
             });
           if (items.length) o[k] = items;
         }
-        else if (el.classList.contains("consin")) { if (el.textContent.trim()) o[k] = el.innerHTML; }  // 협진
         else if (el.value) o[k] = el.value;
       });
       out.push(o);
@@ -605,18 +635,18 @@
         const el = document.querySelector(`[data-i="${i}"][data-k="${k}"]`);
         if (!el) return;
         if (el.classList.contains("tg")) setTg(el, !!o[k]);
-        else if (el.classList.contains("vzone") || el.classList.contains("hrow")) {
+        else if (el.classList.contains("vzone") || el.classList.contains("hrow") || el.classList.contains("crow")) {
+          const horizontal = !el.classList.contains("vzone");
           el._items = [];
-          if (el.classList.contains("hrow")) el.innerHTML = "";
+          if (horizontal) el.innerHTML = "";
           else el.querySelectorAll(".todocol").forEach(c => c.innerHTML = "");
           (Array.isArray(o[k]) ? o[k] : []).forEach(x => {
             const t = (typeof x === "string") ? x : (x && x.t) || "";
             const c = (x && typeof x === "object" && x.c) ? 1 : 0;
             addTodoItem(el, t, c);
           });
-          el.classList.contains("hrow") ? layoutHorz(el) : layoutVert(el);
+          horizontal ? layoutHorz(el) : layoutVert(el);
         }
-        else if (el.classList.contains("consin")) { el.innerHTML = o[k] || ""; layoutCons(el.closest(".cons")); }
         else el.value = o[k] || "";
       });
     }
