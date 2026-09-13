@@ -139,7 +139,7 @@
 
   /* 정규 V/S 손글씨 템플릿 (SBP/DBP-HR-RR-BT-SpO2) — 각 칸에 흐린 가이드 라벨 */
   .vstpl{font-size:var(--fs-cell); white-space:nowrap; color:var(--ink); letter-spacing:0}
-  .vsl{display:inline-block; min-width:0.8cm; text-align:center}
+  .vsl{display:inline-block; min-width:0.58cm; text-align:center}
   .vsl i{font-style:normal; font-size:6pt; color:#c3ccd8}   /* 손글씨로 덮어써도 방해 안 될 만큼 흐리게 */
   .vspo2{display:none}
   .vs.son .vspo2{display:inline}
@@ -410,6 +410,7 @@
     const vs = document.querySelector(`[data-i="${i}"][data-k="vs"]`);
     if (!s || !vs) return;
     vs.classList.toggle("son", !s.classList.contains("off"));
+    fitVS(vs);   // SpO2 켜지면 템플릿이 넓어지므로 폭에 맞게 폰트 다시 축소(끝 괄호 잘림 방지)
   }
 
   /* ── 할 일 리스트 (메모 7칸 병합, 3열 우측→좌측 채움) ──── */
@@ -453,19 +454,28 @@
     tx.addEventListener("compositionend",   () => { tx._composing = false; zone._fitFont(); refreshOut(); });
     tx.addEventListener("input", () => { if (!tx._composing) zone._fitFont(); refreshOut(); });
     tx.addEventListener("contextmenu", onCtx);
+    const removeSelf = () => {                             // DOM만 제거(재배치 X → 포커스 뺏김 방지)
+      const idx = zone._items.indexOf(it); if (idx >= 0) zone._items.splice(idx,1);
+      it.remove();
+      return idx;
+    };
     tx.addEventListener("keydown", ev => {
       if (ev.key === "Enter"){
         if (ev.isComposing || ev.keyCode === 229) return;
         ev.preventDefault();
         const nit = addTodoItem(zone, "", 0); zone._layout(); nit.querySelector(".ttext").focus(); refreshOut();
+      } else if (ev.key === "Backspace" && !tx.textContent.trim() && !tx._composing){
+        ev.preventDefault();                              // 빈 항목 Backspace → 삭제하고 이전 항목으로
+        const idx = removeSelf();
+        const prev = zone._items[Math.max(0, idx - 1)];
+        if (prev) { const p = prev.querySelector(".ttext"); p.focus();
+          const r = document.createRange(); r.selectNodeContents(p); r.collapse(false);
+          const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); }
+        refreshOut();
       }
     });
-    tx.addEventListener("blur", () => {                    // 편집 종료 → 정리(재배치는 여기서만 안전)
-      if (!tx.textContent.trim()){
-        const idx = zone._items.indexOf(it); if (idx >= 0) zone._items.splice(idx,1);
-        it.remove();
-      }
-      zone._layout(); refreshOut();
+    tx.addEventListener("blur", () => {                    // 편집 종료: 빈 항목이면 그냥 제거(재배치 안 함 → 포커스 안 뺏김)
+      if (!tx.textContent.trim()){ removeSelf(); refreshOut(); }
     });
     it.appendChild(tx); it.appendChild(mk);
     zone._items.push(it);
@@ -501,7 +511,6 @@
   // 세로 할 일: 2열(우 vcR → 좌 vcL) 채움, 폰트축소 → 그래도 길면 줄바꿈
   function layoutVert(vzone){
     if (!vzone) return;
-    const caret = saveCaret(vzone);
     const vcR = vzone.querySelector(".vcR"), vcL = vzone.querySelector(".vcL");
     const order = [vcR, vcL];                     // 우측 먼저
     const items = vzone._items || [];
@@ -523,28 +532,25 @@
     };
     const clipped = () => items.some(it => { const t = it.querySelector(".ttext"); return t.scrollWidth > t.clientWidth + 1; });
     setWrap(false);
-    for (let fs = 8.5; fs >= 6; fs -= 0.5){ setFont(fs); if (place() && !clipped()){ restoreCaret(caret); return; } }
+    for (let fs = 8.5; fs >= 6; fs -= 0.5){ setFont(fs); if (place() && !clipped()) return; }
     setFont(6);
     if (place()){                                 // 세로 자리는 되는데 가로로 잘림 → 줄바꿈
       setWrap(true);
-      for (let fs = 7; fs >= 5; fs -= 0.5){ setFont(fs); if (place()){ restoreCaret(caret); return; } }
-      restoreCaret(caret); return;
+      for (let fs = 7; fs >= 5; fs -= 0.5){ setFont(fs); if (place()) return; }
+      return;
     }
     setWrap(false);                               // 세로 넘침 → 더 축소
     for (let fs = 6; fs >= 4.5; fs -= 0.5){ setFont(fs); if (place()) break; }
-    restoreCaret(caret);
   }
   // 가로 할 일: hrow에 왼→오 흐름(flex-wrap), 세로 넘치면 폰트 축소
   function layoutHorz(hrow){
     if (!hrow) return;
-    const caret = saveCaret(hrow);
     const hzone = hrow.parentElement;
     const items = hrow._items || [];
     hrow.innerHTML = "";
     items.forEach(it => { it.querySelector(".ttext").style.whiteSpace = "nowrap"; hrow.appendChild(it); });
     let fs = 8; hrow.style.fontSize = fs + "pt"; let guard = 0;
     while (hrow.scrollHeight > hzone.clientHeight + 1 && fs > 5 && guard++ < 20){ fs -= 0.5; hrow.style.fontSize = fs + "pt"; }
-    restoreCaret(caret);
   }
   // 타이핑 중 폰트만 조정(재부착 없음). 세로: 잘리면 축소→줄바꿈
   function fitVertFont(vzone){
