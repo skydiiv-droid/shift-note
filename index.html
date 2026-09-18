@@ -132,10 +132,32 @@
 
   .nmwrap{display:flex; flex-direction:column; justify-content:center; height:100%; gap:0.55em}
 
-  /* O2 유량 입력 + L 토글 (우측정렬) */
-  .o2wrap{display:flex; align-items:center; width:100%}
-  .o2wrap .o2in{flex:1; min-width:0; text-align:right; padding-right:2px; font-size:var(--fs-cell)}
-  .tg.o2l{width:auto; flex:0 0 auto; padding:0 2px}
+  /* 순서변경 드래그 핸들 (인쇄 안 됨) */
+  .iocell{position:relative}
+  .draghandle{
+    position:absolute; left:1px; top:0; bottom:0; z-index:6;
+    display:flex; align-items:center;
+    font-size:11px; line-height:1; color:#94a3b8; cursor:grab;
+    padding:0 2px; user-select:none; touch-action:none;
+  }
+  .draghandle:hover{color:#0ea5e9}
+  body.dragging, body.dragging *{cursor:grabbing !important; user-select:none}
+  #rows tr.drop-target td{background:#e0f2fe}
+
+  /* 바이탈 3분할 행 (BP|HR|T, S|RR|L) */
+  .vrow{display:flex; height:100%; align-items:stretch}
+  .vrow .tg{flex:1; width:auto; display:flex; align-items:center; justify-content:center; min-height:0; padding:0}
+  .vrow .tg + .tg{border-left:var(--line)}
+
+  /* IV: P C 토글 + 날짜 입력 */
+  .ivwrap{display:flex; align-items:center; width:100%; gap:1px}
+  .ivwrap .tg{flex:0 0 auto; width:auto; padding:0 1px}
+  .ivwrap .iv{flex:1; min-width:0}
+
+  /* B* + 숫자 */
+  .bwrap{display:flex; align-items:center; height:100%}
+  .bwrap .tg{flex:0 0 auto; width:auto; padding-left:2px}
+  .bnum{flex:1; min-width:0; text-align:left; padding-left:1px}
 
   /* 정규 V/S 손글씨 템플릿 (SBP/DBP-HR-RR-BT-SpO2) — 각 칸에 흐린 가이드 라벨 */
   .vstpl{font-size:var(--fs-cell); white-space:nowrap; color:var(--ink); letter-spacing:0}
@@ -217,8 +239,9 @@
     input.f:focus{background:transparent}
     input.f::placeholder{color:transparent !important}
     .ctxmenu{display:none !important}
-    .todoadd{display:none !important}
+    .todoadd, .draghandle{display:none !important}
     .todoitem .ttext:focus{background:transparent}
+    #rows tr.drop-target td{background:transparent !important}
     /* 형광펜·글씨색이 인쇄에도 그대로 나오게 */
     .sheet, .sheet *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     html,body{width:17cm}
@@ -284,7 +307,7 @@
   let count = MAX;
 
   // 셀 키 목록 (가져오기/내보내기 순서 고정)
-  const KEYS = ["io","iv","lab","ua","ekg","rad","name","dc","bp","bpr","s","o2","o2l","b","m",
+  const KEYS = ["io","iv","p","c","lab","ua","ekg","rad","name","dc","bp","hr","bpr","s","rr","o2l","b","bn","m",
                 "todo","htodo","cons"];
 
   /* ── 한 환자 블록 3행 생성 ───────────────────────────── */
@@ -314,29 +337,30 @@
 
     return `
     <tr class="r1" data-i="${i}">
-      <td colspan="4" class="a">${tg("io","I/O")}</td>
+      <td colspan="4" class="a iocell">
+        <span class="draghandle no-print" data-i="${i}" title="드래그해서 순서 변경">≡</span>
+        ${tg("io","I/O")}
+      </td>
       <td rowspan="3" class="name">
         <div class="nmwrap">
           ${inp("name","nm","이름")}
           ${tg("dc","d/c","sm")}
         </div>
       </td>
-      <td class="e">${tg("bp","BP","al")}</td>
-      <td class="f">${tg("bpr","T","ar")}</td>
+      <td colspan="2" class="f vitals"><div class="vrow">${tg("bp","BP")}${tg("hr","HR")}${tg("bpr","T")}</div></td>
       <td rowspan="3" class="gut"></td>
       <td colspan="3" rowspan="3" class="todo">${todoCell}</td>
     </tr>
     <tr class="r2" data-i="${i}">
-      <td colspan="4" class="a">${inp("iv","ctr mini","IV일",5)}</td>
-      <td class="e">${tg("s","S","al")}</td>
-      <td class="f"><div class="o2wrap">${inp("o2","o2in","",4)}${tg("o2l","L","o2l ar")}</div></td>
+      <td colspan="4" class="a ivcell"><div class="ivwrap">${tg("p","P","sm")}${tg("c","C","sm")}${inp("iv","ctr iv","IV일",5)}</div></td>
+      <td colspan="2" class="f vitals"><div class="vrow">${tg("s","S")}${tg("rr","RR")}${tg("o2l","L")}</div></td>
     </tr>
     <tr class="r3" data-i="${i}">
       <td class="a">${tg("lab","L","sm")}</td>
       <td class="a">${tg("ua","U","sm")}</td>
       <td class="a">${tg("ekg","E","sm")}</td>
       <td class="a">${tg("rad","R","sm")}</td>
-      <td class="e">${tg("b","B","al")}</td>
+      <td class="e"><div class="bwrap">${tg("b","B*","al")}${inp("bn","bnum","",2)}</div></td>
       <td class="f">${tg("m","m","ar")}</td>
     </tr>`;
   }
@@ -396,6 +420,66 @@
         const i = +el.dataset.i, ni = ev.shiftKey ? i - 1 : i + 1;
         const next = document.querySelector(`[data-i="${ni}"][data-k="name"]`);
         if (next){ ev.preventDefault(); next.focus(); next.select && next.select(); }
+      });
+    });
+    bindDrag();
+  }
+
+  /* ── 환자 순서 변경 (三 핸들 드래그, 터치/마우스 공용) ──── */
+  let dragSrc = null;
+  function blockIndexAtY(y){
+    const rows = [...document.querySelectorAll("#rows tr.r1")];
+    if (!rows.length) return null;
+    for (let k=0;k<rows.length;k++){
+      const i = +rows[k].dataset.i;
+      const top = rows[k].getBoundingClientRect().top;
+      const r3 = document.querySelector(`#rows tr.r3[data-i="${i}"]`);
+      const bottom = rows[k+1] ? rows[k+1].getBoundingClientRect().top
+                               : (r3 ? r3.getBoundingClientRect().bottom : top + 9999);
+      if (y < bottom) return { i, before: y < (top + bottom) / 2 };
+    }
+    return { i:+rows[rows.length-1].dataset.i, before:false };
+  }
+  function markTarget(t){
+    document.querySelectorAll("#rows tr.drop-target").forEach(tr => tr.classList.remove("drop-target"));
+    if (t && t.i !== dragSrc) document.querySelectorAll(`#rows tr[data-i="${t.i}"]`).forEach(tr => tr.classList.add("drop-target"));
+  }
+  function reorderPatients(src, dst){
+    if (src === dst) return;
+    const data = collect();
+    const [moved] = data.splice(src, 1);
+    data.splice(dst, 0, moved);
+    render(false);
+    apply(data, true);
+  }
+  function bindDrag(){
+    document.querySelectorAll(".draghandle").forEach(h => {
+      h.addEventListener("pointerdown", e => {
+        e.preventDefault();
+        dragSrc = +h.dataset.i;
+        document.body.classList.add("dragging");
+        try { h.setPointerCapture(e.pointerId); } catch(_){}
+      });
+      h.addEventListener("pointermove", e => {
+        if (dragSrc === null) return;
+        markTarget(blockIndexAtY(e.clientY));
+      });
+      h.addEventListener("pointerup", e => {
+        if (dragSrc === null) return;
+        const t = blockIndexAtY(e.clientY);
+        const src = dragSrc; dragSrc = null;
+        document.body.classList.remove("dragging");
+        document.querySelectorAll("#rows tr.drop-target").forEach(tr => tr.classList.remove("drop-target"));
+        if (!t) return;
+        // 위쪽 절반이면 그 자리 앞, 아래면 뒤로
+        let dst = t.i + (t.before ? 0 : 1);
+        if (src < dst) dst--;                 // 앞에서 빼면 인덱스 한 칸 당겨짐
+        dst = Math.max(0, Math.min(document.querySelectorAll("#rows tr.r1").length - 1, dst));
+        reorderPatients(src, dst);
+      });
+      h.addEventListener("pointercancel", () => {
+        dragSrc = null; document.body.classList.remove("dragging");
+        document.querySelectorAll("#rows tr.drop-target").forEach(tr => tr.classList.remove("drop-target"));
       });
     });
   }
