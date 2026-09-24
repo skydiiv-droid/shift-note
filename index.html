@@ -80,7 +80,7 @@
     transform-origin:top center;
   }
   table.form{
-    width:17cm; table-collapse:collapse; border-collapse:collapse;
+    width:16.76cm; margin:0 auto; border-collapse:collapse;   /* 17cm→16.76: 인쇄 시 우측 잘림 방지 */
     table-layout:fixed;
   }
   table.form td{
@@ -144,15 +144,26 @@
   body.dragging, body.dragging *{cursor:grabbing !important; user-select:none}
   #rows tr.drop-target td{background:#e0f2fe}
 
-  /* 바이탈 3분할 행 (BP|HR|T, S|RR|L) */
+  /* 분할 행 (I/O|defe, BP|HR|T, S|RR|L) */
   .vrow{display:flex; height:100%; align-items:stretch}
   .vrow .tg{flex:1; width:auto; display:flex; align-items:center; justify-content:center; min-height:0; padding:0}
-  .vrow .tg + .tg{border-left:var(--line)}
+  .vrow .tg + .tg, .vrow .tg + .lslot{border-left:var(--line)}
+  .iocell .vrow{padding-left:11px}          /* 드래그 핸들 자리 */
+  /* L 슬롯: 숫자 입력 + L (O2 유량) */
+  .vrow .lslot{flex:1; min-width:0; display:flex; align-items:center; justify-content:center}
+  .vrow .lslot .o2num{flex:1; min-width:0; text-align:right; padding-right:1px}
+  .vrow .lslot .tg{flex:0 0 auto; width:auto; display:inline}
 
   /* IV: P C 토글 + 날짜 입력 */
   .ivwrap{display:flex; align-items:center; width:100%; gap:1px}
   .ivwrap .tg{flex:0 0 auto; width:auto; padding:0 1px}
   .ivwrap .iv{flex:1; min-width:0}
+
+  /* 이름 밑 d/c 줄: 날짜 입력 + 요일 + d/c */
+  .dcrow{display:flex; align-items:baseline; width:100%}
+  .dcrow .dcdate{width:2.9em; min-width:0; text-align:right; font-size:var(--fs-mini)}
+  .dcrow .dcwday{flex:0 0 auto; font-size:var(--fs-mini); color:var(--ink); white-space:nowrap}
+  .dcrow .tg{margin-left:auto; flex:0 0 auto; width:auto}
 
   /* B* + 숫자 */
   .bwrap{display:flex; align-items:center; height:100%}
@@ -288,7 +299,7 @@
         <col style="width:2.133cm">
         <col style="width:1.065cm"><col style="width:1.067cm">
         <col style="width:0.192cm">
-        <col style="width:3.47cm"><col style="width:3.47cm"><col style="width:3.473cm">
+        <col style="width:3.39cm"><col style="width:3.39cm"><col style="width:3.39cm">
       </colgroup>
       <tbody id="rows"></tbody>
     </table>
@@ -307,8 +318,9 @@
   let count = MAX;
 
   // 셀 키 목록 (가져오기/내보내기 순서 고정)
-  const KEYS = ["io","iv","p","c","lab","ua","ekg","rad","name","dc","bp","hr","bpr","s","rr","o2l","b","bn","m",
+  const KEYS = ["io","defe","iv","p","c","lab","ua","ekg","rad","name","dc","dcd","bp","hr","bpr","s","rr","o2l","o2n","b","bn","m",
                 "todo","htodo","cons"];
+  const WDAYS = ["일","월","화","수","목","금","토"];
 
   /* ── 한 환자 블록 3행 생성 ───────────────────────────── */
   function block(i){
@@ -339,12 +351,12 @@
     <tr class="r1" data-i="${i}">
       <td colspan="4" class="a iocell">
         <span class="draghandle no-print" data-i="${i}" title="드래그해서 순서 변경">≡</span>
-        ${tg("io","I/O")}
+        <div class="vrow">${tg("io","I/O")}${tg("defe","defe")}</div>
       </td>
       <td rowspan="3" class="name">
         <div class="nmwrap">
           ${inp("name","nm","이름")}
-          ${tg("dc","d/c","sm")}
+          <div class="dcrow">${inp("dcd","dcdate","날짜",5)}<span class="dcwday" data-i="${i}"></span>${tg("dc","d/c","sm")}</div>
         </div>
       </td>
       <td colspan="2" class="f vitals"><div class="vrow">${tg("bp","BP")}${tg("hr","HR")}${tg("bpr","T")}</div></td>
@@ -352,8 +364,8 @@
       <td colspan="3" rowspan="3" class="todo">${todoCell}</td>
     </tr>
     <tr class="r2" data-i="${i}">
-      <td colspan="4" class="a ivcell"><div class="ivwrap">${tg("p","P","sm")}${tg("c","C","sm")}${inp("iv","ctr iv","IV일",5)}</div></td>
-      <td colspan="2" class="f vitals"><div class="vrow">${tg("s","S")}${tg("rr","RR")}${tg("o2l","L")}</div></td>
+      <td colspan="4" class="a ivcell"><div class="ivwrap">${tg("p","P")}${tg("c","C")}${inp("iv","ctr iv","IV일",5)}</div></td>
+      <td colspan="2" class="f vitals"><div class="vrow">${tg("s","S")}${tg("rr","RR")}<span class="lslot">${inp("o2n","o2num","",3)}${tg("o2l","L")}</span></div></td>
     </tr>
     <tr class="r3" data-i="${i}">
       <td class="a">${tg("lab","L","sm")}</td>
@@ -377,6 +389,7 @@
     bindCells();
     scaleToFit();
     layoutAllTodo();
+    updateAllWday();
     refreshOut();
   }
 
@@ -399,7 +412,17 @@
 
   function bindCells(){
     document.querySelectorAll(".tg").forEach(el => {
+      const k = el.dataset.k;
+      if (k === "b" || k === "o2l") return;   // B*, L 은 클릭 사이클(아래 별도 바인딩)
       el.addEventListener("click", () => { setTg(el, el.classList.contains("off")); refreshOut(); });
+    });
+    // B* : 클릭마다 4 → 2 → 1 → 빈칸(입력) → 끔
+    document.querySelectorAll('[data-k="b"]').forEach(b => b.addEventListener("click", () => cycleB(b)));
+    // L : 클릭마다 2L → 입력 → 끔
+    document.querySelectorAll('[data-k="o2l"]').forEach(l => l.addEventListener("click", () => cycleL(l)));
+    // 이름 밑 날짜: 입력 시 요일 자동
+    document.querySelectorAll(".dcdate").forEach(el => {
+      el.addEventListener("input", () => { updateWday(el); refreshOut(); });
     });
     document.querySelectorAll(".addV").forEach(btn => {           // 세로(오른쪽) 추가
       btn.addEventListener("click", () => {
@@ -413,10 +436,12 @@
     };
     document.querySelectorAll(".addH").forEach(btn => btn.addEventListener("click", () => addToRow(".hrow", btn)));  // 가로 할 일
     document.querySelectorAll(".addC").forEach(btn => btn.addEventListener("click", () => addToRow(".crow", btn)));  // 협진
-    // 이름 칸: Tab → 다음 환자 이름, Shift+Tab → 이전 환자 이름
+    // 이름 칸: Enter(또는 Tab) → 다음 환자 이름, Shift 동반 시 이전
     document.querySelectorAll('[data-k="name"]').forEach(el => {
       el.addEventListener("keydown", ev => {
-        if (ev.key !== "Tab") return;
+        const enter = ev.key === "Enter", tab = ev.key === "Tab";
+        if (!enter && !tab) return;
+        if (enter && (ev.isComposing || ev.keyCode === 229)) return;   // 한글 조합 확정용 Enter는 무시
         const i = +el.dataset.i, ni = ev.shiftKey ? i - 1 : i + 1;
         const next = document.querySelector(`[data-i="${ni}"][data-k="name"]`);
         if (next){ ev.preventDefault(); next.focus(); next.select && next.select(); }
@@ -424,6 +449,40 @@
     });
     bindDrag();
   }
+  // B* 사이클: 끔 → 4 → 2 → 1 → 빈칸(입력) → 끔
+  function cycleB(b){
+    const bn = document.querySelector(`[data-i="${b.dataset.i}"][data-k="bn"]`);
+    const on = !b.classList.contains("off"), v = bn.value.trim();
+    if (!on){ setTg(b, true); bn.value = "4"; }
+    else if (v === "4"){ bn.value = "2"; }
+    else if (v === "2"){ bn.value = "1"; }
+    else if (v === "1"){ bn.value = ""; bn.focus(); }        // 빈칸 → 직접 입력
+    else { setTg(b, false); bn.value = ""; }                 // 끔
+    refreshOut();
+  }
+  // L 사이클: 끔 → 2L → 입력 → 끔
+  function cycleL(l){
+    const n = document.querySelector(`[data-i="${l.dataset.i}"][data-k="o2n"]`);
+    const on = !l.classList.contains("off"), v = n.value.trim();
+    if (!on){ setTg(l, true); n.value = "2"; }
+    else if (v === "2"){ n.value = ""; n.focus(); }   // 2L → 직접 입력
+    else { setTg(l, false); n.value = ""; }           // 끔
+    refreshOut();
+  }
+  // 날짜 M/D → 가까운 미래 연도로 요일 자동 (예: 12/28에 1/1 입력 → 내년)
+  function updateWday(el){
+    const span = el.closest(".dcrow").querySelector(".dcwday");
+    const m = (el.value || "").match(/^\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*$/);
+    if (!m){ span.textContent = ""; return; }
+    const mo = +m[1], d = +m[2];
+    if (mo < 1 || mo > 12 || d < 1 || d > 31){ span.textContent = ""; return; }
+    const now = new Date(); now.setHours(0,0,0,0);
+    let dt = new Date(now.getFullYear(), mo - 1, d);
+    if (dt < now) dt = new Date(now.getFullYear() + 1, mo - 1, d);
+    if (dt.getMonth() !== mo - 1){ span.textContent = ""; return; }   // 2/30 같은 무효 날짜
+    span.textContent = "(" + WDAYS[dt.getDay()] + ")";
+  }
+  function updateAllWday(){ document.querySelectorAll(".dcdate").forEach(updateWday); }
 
   /* ── 환자 순서 변경 (三 핸들 드래그, 터치/마우스 공용) ──── */
   let dragSrc = null;
@@ -740,6 +799,7 @@
         else el.value = o[k] || "";
       });
     }
+    updateAllWday();   // 가져온 날짜의 요일 다시 표시
   }
   function isEmpty(){
     return collect().every(o => Object.keys(o).length === 0);
