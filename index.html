@@ -130,7 +130,8 @@
   .tg.al{text-align:left; padding-left:2px}    /* 좌측정렬 (가운데에 수치 손글씨) */
   .tg.ar{text-align:right; padding-right:2px}   /* 우측정렬 */
 
-  .nmwrap{display:flex; flex-direction:column; justify-content:center; height:100%; gap:0.55em}
+  .nmwrap{display:flex; flex-direction:column; justify-content:center; height:100%; gap:0.3em}
+  .nmwrap .ccin{font-size:var(--fs-cell); text-align:center}   /* 상병/C.C. — 나머지와 동일 크기 */
 
   /* 순서변경 드래그 핸들 (인쇄 안 됨) */
   .iocell{position:relative}
@@ -318,7 +319,7 @@
   let count = MAX;
 
   // 셀 키 목록 (가져오기/내보내기 순서 고정)
-  const KEYS = ["io","defe","iv","p","c","lab","ua","ekg","rad","name","dc","dcd","bp","hr","bpr","s","rr","o2l","o2n","b","bn","m",
+  const KEYS = ["io","defe","iv","p","c","lab","ua","ekg","rad","dcd","dc","name","cc","bp","hr","bpr","s","rr","o2l","o2n","b","bn","m",
                 "todo","htodo","cons"];
   const WDAYS = ["일","월","화","수","목","금","토"];
 
@@ -355,8 +356,9 @@
       </td>
       <td rowspan="3" class="name">
         <div class="nmwrap">
-          ${inp("name","nm","이름")}
           <div class="dcrow">${inp("dcd","dcdate","날짜",5)}<span class="dcwday" data-i="${i}"></span>${tg("dc","d/c","sm")}</div>
+          ${inp("name","nm","이름")}
+          ${inp("cc","ccin","C.C.")}
         </div>
       </td>
       <td colspan="2" class="f vitals"><div class="vrow">${tg("bp","BP")}${tg("hr","HR")}${tg("bpr","T")}</div></td>
