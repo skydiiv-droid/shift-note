@@ -434,9 +434,10 @@
     document.querySelectorAll(".dcdate").forEach(el => {
       el.addEventListener("input", () => onDcDateInput(el));
     });
-    // IV 날짜: 3일 이상 지났으면 우측 할 일에 "IV change" 자동 생성
+    // IV 날짜: 다 입력하고 Enter(또는 칸 벗어날 때)만 판정 → 3일 이상 지났으면 "IV change" 자동 생성
     document.querySelectorAll("input.iv").forEach(el => {
-      el.addEventListener("input", () => checkIvChange(el));
+      el.addEventListener("keydown", ev => { if (ev.key === "Enter" && !ev.isComposing){ ev.preventDefault(); checkIvChange(el); el.blur(); } });
+      el.addEventListener("change", () => checkIvChange(el));
     });
     document.querySelectorAll(".addV").forEach(btn => {           // 세로(오른쪽) 추가
       btn.addEventListener("click", () => {
