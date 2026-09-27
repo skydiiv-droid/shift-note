@@ -430,9 +430,13 @@
     document.querySelectorAll('[data-k="o2l"]').forEach(l => l.addEventListener("click", () => cycleL(l)));
     // d/c : 클릭마다 표시 → 볼드확대+오늘+취소선 → 끔
     document.querySelectorAll('[data-k="dc"]').forEach(dc => dc.addEventListener("click", () => cycleDc(dc)));
-    // 이름 밑 날짜: 입력 시 요일 자동
+    // 날짜: 입력 시 요일 자동 + 오늘이면 퇴원 강조(취소선)
     document.querySelectorAll(".dcdate").forEach(el => {
-      el.addEventListener("input", () => { updateWday(el); refreshOut(); });
+      el.addEventListener("input", () => onDcDateInput(el));
+    });
+    // IV 날짜: 3일 이상 지났으면 우측 할 일에 "IV change" 자동 생성
+    document.querySelectorAll("input.iv").forEach(el => {
+      el.addEventListener("input", () => checkIvChange(el));
     });
     document.querySelectorAll(".addV").forEach(btn => {           // 세로(오른쪽) 추가
       btn.addEventListener("click", () => {
@@ -493,6 +497,52 @@
     span.textContent = "(" + WDAYS[dt.getDay()] + ")";
   }
   function updateAllWday(){ document.querySelectorAll(".dcdate").forEach(updateWday); }
+  // 날짜 문자열이 오늘(m/d)인가
+  function isTodayStr(v){
+    const m = (v || "").match(/^\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*$/);
+    if (!m) return false;
+    const now = new Date();
+    return +m[1] === now.getMonth() + 1 && +m[2] === now.getDate();
+  }
+  // 날짜칸 입력 처리: 요일 갱신 + (d/c 켜져 있으면) 오늘이면 퇴원강조(2), 아니면 일반(1)
+  function onDcDateInput(el){
+    updateWday(el);
+    const dc = document.querySelector(`[data-i="${el.dataset.i}"][data-k="dc"]`);
+    if (dc && !dc.classList.contains("off")) applyDcState(dc, isTodayStr(el.value) ? 2 : 1);
+    refreshOut();
+  }
+  // IV 날짜(m/d 또는 일자) → 최근 과거 날짜로 해석, 오늘과의 경과일수
+  function ivDaysAgo(v){
+    v = (v || "").trim();
+    const now = new Date(); now.setHours(0,0,0,0);
+    let dt;
+    const mm = v.match(/^(\d{1,2})\s*\/\s*(\d{1,2})$/);
+    if (mm){
+      const mo = +mm[1], d = +mm[2];
+      if (mo<1||mo>12||d<1||d>31) return null;
+      dt = new Date(now.getFullYear(), mo-1, d);
+      if (dt > now) dt = new Date(now.getFullYear()-1, mo-1, d);   // 미래면 작년
+      if (dt.getMonth() !== mo-1) return null;
+    } else if (/^\d{1,2}$/.test(v)){
+      const d = +v; if (d<1||d>31) return null;
+      dt = new Date(now.getFullYear(), now.getMonth(), d);
+      if (dt > now) dt = new Date(now.getFullYear(), now.getMonth()-1, d);  // 미래면 지난달
+      if (dt.getDate() !== d) return null;
+    } else return null;
+    return Math.round((now - dt) / 86400000);
+  }
+  // IV 날짜가 3일 이상 지났으면 우측(세로) 할 일에 "IV change" 자동 생성(중복 방지)
+  function checkIvChange(el){
+    const days = ivDaysAgo(el.value);
+    if (days === null || days < 3) return;
+    const vz = document.querySelector(`.vzone[data-i="${el.dataset.i}"]`);
+    if (!vz) return;
+    const has = (vz._items || []).some(it => it.querySelector(".ttext").textContent.trim() === "IV change");
+    if (has) return;
+    addTodoItem(vz, { t:"IV change" });
+    layoutVert(vz);
+    refreshOut();
+  }
 
   /* ── 환자 순서 변경 (三 핸들 드래그, 터치/마우스 공용) ──── */
   let dragSrc = null;
