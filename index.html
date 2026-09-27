@@ -97,6 +97,7 @@
   table.form td.name{border:var(--line)}                      /* 이름칸 전체 박스 */
   table.form td.f{border-right:var(--line)}                   /* special V/S 우측 구분선 */
   table.form td.gut{border-top:var(--line);border-bottom:var(--line)}  /* 얇은 거터(rowspan 3) */
+  table.form td.todo{border-bottom:var(--line)}   /* 할 일 칸은 rowspan3라 r3 아래선이 안 걸림 → 직접(마지막 블록 아래선) */
 
   /* 화면 전용 셀 가이드 */
   @media screen{
@@ -160,11 +161,14 @@
   .ivwrap .tg{flex:0 0 auto; width:auto; padding:0 1px}
   .ivwrap .iv{flex:1; min-width:0}
 
-  /* 이름 밑 d/c 줄: 날짜 입력 + 요일 + d/c */
+  /* 이름 위 d/c 줄: 날짜 입력 + 요일 + d/c (클릭 사이클) */
   .dcrow{display:flex; align-items:baseline; width:100%}
   .dcrow .dcdate{width:2.9em; min-width:0; text-align:right; font-size:var(--fs-mini)}
+  .dcrow .dcdate[readonly]{color:var(--ph)}       /* d/c 끄면 날짜칸 비활성(흐림) */
   .dcrow .dcwday{flex:0 0 auto; font-size:var(--fs-mini); color:var(--ink); white-space:nowrap}
   .dcrow .tg{margin-left:auto; flex:0 0 auto; width:auto}
+  .tg.dcbig{font-size:var(--fs-cell); font-weight:700}   /* d/c 2번 클릭: 크게+볼드(퇴원 확정) */
+  .nm.struck{text-decoration:line-through}               /* 퇴원 확정 시 이름 취소선 */
 
   /* B* + 숫자 */
   .bwrap{display:flex; align-items:center; height:100%}
@@ -209,7 +213,8 @@
   /* 가로(할 일/협진): 내용만큼만, 좌측정렬 */
   .hrow .todoitem,.crow .todoitem{display:inline-flex; max-width:100%}
   .hrow .todoitem .ttext,.crow .todoitem .ttext{flex:0 1 auto; text-align:left}
-  .crow .todoitem{gap:0}              /* ED▶ 붙여서 */
+  .crow .todoitem{gap:1px}                                   /* 과 ▶ 내용 */
+  .crow .todoitem .ttext{display:inline-block; min-width:1.3em}   /* 빈 칸도 클릭되게 */
 
   /* 왼쪽 아래 V/S (축소) */
   td.todo .vs{position:absolute; left:0; display:flex; align-items:center; overflow:hidden}
@@ -392,6 +397,7 @@
     scaleToFit();
     layoutAllTodo();
     updateAllWday();
+    syncAllDc();
     refreshOut();
   }
 
@@ -415,13 +421,15 @@
   function bindCells(){
     document.querySelectorAll(".tg").forEach(el => {
       const k = el.dataset.k;
-      if (k === "b" || k === "o2l") return;   // B*, L 은 클릭 사이클(아래 별도 바인딩)
+      if (k === "b" || k === "o2l" || k === "dc") return;   // B*, L, d/c 는 클릭 사이클(아래 별도 바인딩)
       el.addEventListener("click", () => { setTg(el, el.classList.contains("off")); refreshOut(); });
     });
     // B* : 클릭마다 4 → 2 → 1 → 빈칸(입력) → 끔
     document.querySelectorAll('[data-k="b"]').forEach(b => b.addEventListener("click", () => cycleB(b)));
     // L : 클릭마다 2L → 입력 → 끔
     document.querySelectorAll('[data-k="o2l"]').forEach(l => l.addEventListener("click", () => cycleL(l)));
+    // d/c : 클릭마다 표시 → 볼드확대+오늘+취소선 → 끔
+    document.querySelectorAll('[data-k="dc"]').forEach(dc => dc.addEventListener("click", () => cycleDc(dc)));
     // 이름 밑 날짜: 입력 시 요일 자동
     document.querySelectorAll(".dcdate").forEach(el => {
       el.addEventListener("input", () => { updateWday(el); refreshOut(); });
@@ -429,12 +437,12 @@
     document.querySelectorAll(".addV").forEach(btn => {           // 세로(오른쪽) 추가
       btn.addEventListener("click", () => {
         const z = document.querySelector(`.vzone[data-i="${btn.dataset.i}"]`);
-        const it = addTodoItem(z, "", 0); layoutVert(z); it.querySelector(".ttext").focus(); refreshOut();
+        const it = addTodoItem(z, {}); layoutVert(z); it.querySelector(".ttext").focus(); refreshOut();
       });
     });
     const addToRow = (sel, btn) => {
       const z = document.querySelector(`${sel}[data-i="${btn.dataset.i}"]`);
-      const it = addTodoItem(z, "", 0); layoutHorz(z); it.querySelector(".ttext").focus(); refreshOut();
+      const it = addTodoItem(z, {}); layoutHorz(z); it.querySelector(".ttext").focus(); refreshOut();
     };
     document.querySelectorAll(".addH").forEach(btn => btn.addEventListener("click", () => addToRow(".hrow", btn)));  // 가로 할 일
     document.querySelectorAll(".addC").forEach(btn => btn.addEventListener("click", () => addToRow(".crow", btn)));  // 협진
@@ -549,6 +557,32 @@
     el.textContent = el.dataset.label;   // 꺼짐 상태는 CSS로 회색/인쇄시 투명
     if (el.dataset.k === "s") updateSpo2(el.dataset.i);   // S ↔ V/S SpO2 괄호 연동
   }
+  /* ── d/c 사이클: 끔 → ①표시+날짜입력활성 → ②볼드확대+오늘날짜+이름취소선 → 끔 ── */
+  function dcState(dc){ return dc.classList.contains("off") ? 0 : (dc.classList.contains("dcbig") ? 2 : 1); }
+  function syncDc(dc){   // 상태에 맞춰 날짜칸 활성/비활성 + 이름 취소선
+    const i = dc.dataset.i, st = dcState(dc);
+    const dcd = document.querySelector(`[data-i="${i}"][data-k="dcd"]`);
+    const name = document.querySelector(`[data-i="${i}"][data-k="name"]`);
+    if (dcd) dcd.readOnly = (st === 0);
+    if (name) name.classList.toggle("struck", st === 2);
+  }
+  function applyDcState(dc, st){
+    setTg(dc, st > 0);                 // st>0 면 d/c 표시
+    dc.classList.toggle("dcbig", st === 2);
+    dc.textContent = dc.dataset.label; // setTg가 라벨 다시 세팅
+    syncDc(dc);
+  }
+  function cycleDc(dc){
+    const i = dc.dataset.i, st = (dcState(dc) + 1) % 3;
+    const dcd = document.querySelector(`[data-i="${i}"][data-k="dcd"]`);
+    if (st === 0 && dcd) dcd.value = "";                                         // 끔 → 날짜 지움
+    if (st === 2 && dcd){ const n = new Date(); dcd.value = (n.getMonth()+1) + "/" + n.getDate(); }  // 퇴원=오늘
+    applyDcState(dc, st);
+    if (dcd) updateWday(dcd);
+    if (st === 1 && dcd) dcd.focus();                                            // 날짜 입력 활성화
+    refreshOut();
+  }
+  function syncAllDc(){ document.querySelectorAll('[data-k="dc"]').forEach(syncDc); }
   // S 토글이 켜져 있으면 V/S 칸 끝에 (SpO2) 괄호를 보이게
   function updateSpo2(i){
     const s  = document.querySelector(`[data-i="${i}"][data-k="s"]`);
@@ -586,43 +620,48 @@
     zone._layout  = horizontal ? () => layoutHorz(zone)   : () => layoutVert(zone);
     zone._fitFont = horizontal ? () => fitHorzFont(zone)  : () => fitVertFont(zone);
   }
-  function addTodoItem(zone, html, done){
-    ensureZoneFns(zone);
-    zone._items = zone._items || [];
-    const it = document.createElement("div"); it.className = "todoitem";
-    const mk = zoneKind(zone).arrow ? makeArrow() : makeChk(done);
-    const tx = document.createElement("span");
-    tx.className = "ttext"; tx.contentEditable = "true"; if (html) tx.innerHTML = html;
-    // ⚠ 한글 IME: 조합 중은 물론, 타이핑 전반에서 항목을 재부착하면 자모/단어가 씹힘
-    //   → 타이핑 중엔 폰트만(_fitFont), 전체 재배치(_layout)는 추가/삭제/편집종료 때만.
+  // 편집 가능한 조각(.ttext) 하나에 IME/삭제/서식/이동 이벤트 연결
+  function wireEditable(tx, zone, it){
+    tx.className = "ttext"; tx.contentEditable = "true";
+    const remove = () => { const idx = zone._items.indexOf(it); if (idx >= 0) zone._items.splice(idx,1); it.remove(); return idx; };
+    const empty  = () => ![...it.querySelectorAll(".ttext")].some(t => t.textContent.trim());
+    // ⚠ 한글 IME: 타이핑 중 재부착하면 씹힘 → 폰트만(_fitFont), 재배치(_layout)는 추가/삭제/편집종료 때만
     tx.addEventListener("compositionstart", () => { tx._composing = true; });
     tx.addEventListener("compositionend",   () => { tx._composing = false; zone._fitFont(); refreshOut(); });
     tx.addEventListener("input", () => { if (!tx._composing) zone._fitFont(); refreshOut(); });
     tx.addEventListener("contextmenu", onCtx);
-    const removeSelf = () => {                             // DOM만 제거(재배치 X → 포커스 뺏김 방지)
-      const idx = zone._items.indexOf(it); if (idx >= 0) zone._items.splice(idx,1);
-      it.remove();
-      return idx;
-    };
     tx.addEventListener("keydown", ev => {
       if (ev.key === "Enter"){
         if (ev.isComposing || ev.keyCode === 229) return;
         ev.preventDefault();
-        const nit = addTodoItem(zone, "", 0); zone._layout(); nit.querySelector(".ttext").focus(); refreshOut();
-      } else if (ev.key === "Backspace" && !tx.textContent.trim() && !tx._composing){
+        const nit = addTodoItem(zone, {}); zone._layout(); nit.querySelector(".ttext").focus(); refreshOut();
+      } else if (ev.key === "Backspace" && !tx.textContent.trim() && !tx._composing && empty()){
         ev.preventDefault();                              // 빈 항목 Backspace → 삭제하고 이전 항목으로
-        const idx = removeSelf();
+        const idx = remove();
         const prev = zone._items[Math.max(0, idx - 1)];
-        if (prev) { const p = prev.querySelector(".ttext"); p.focus();
+        if (prev){ const p = prev.querySelector(".ttext"); p.focus();
           const r = document.createRange(); r.selectNodeContents(p); r.collapse(false);
           const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); }
         refreshOut();
       }
     });
-    tx.addEventListener("blur", () => {                    // 편집 종료: 빈 항목이면 그냥 제거(재배치 안 함 → 포커스 안 뺏김)
-      if (!tx.textContent.trim()){ removeSelf(); refreshOut(); }
-    });
-    it.appendChild(tx); it.appendChild(mk);
+    tx.addEventListener("blur", () => { if (empty()){ remove(); refreshOut(); } });
+  }
+  // rec = {t, c}(세로/가로 할 일) 또는 {t:과, r:내용}(협진). 협진은 [과] ▶ [내용] 두 칸.
+  function addTodoItem(zone, rec){
+    rec = rec || {};
+    ensureZoneFns(zone);
+    zone._items = zone._items || [];
+    const it = document.createElement("div"); it.className = "todoitem";
+    const tx1 = document.createElement("span"); if (rec.t) tx1.innerHTML = rec.t;
+    wireEditable(tx1, zone, it); it.appendChild(tx1);
+    if (zoneKind(zone).arrow){                            // 협진: 과 ▶ 내용
+      it.appendChild(makeArrow());
+      const tx2 = document.createElement("span"); if (rec.r) tx2.innerHTML = rec.r;
+      wireEditable(tx2, zone, it); it.appendChild(tx2);
+    } else {
+      it.appendChild(makeChk(rec.c ? 1 : 0));
+    }
     zone._items.push(it);
     return it;
   }
@@ -693,7 +732,7 @@
     const hzone = hrow.parentElement;
     const items = hrow._items || [];
     hrow.innerHTML = "";
-    items.forEach(it => { it.querySelector(".ttext").style.whiteSpace = "nowrap"; hrow.appendChild(it); });
+    items.forEach(it => { it.querySelectorAll(".ttext").forEach(t => t.style.whiteSpace = "nowrap"); hrow.appendChild(it); });
     let fs = 8; hrow.style.fontSize = fs + "pt"; let guard = 0;
     while (hrow.scrollHeight > hzone.clientHeight + 1 && fs > 5 && guard++ < 20){ fs -= 0.5; hrow.style.fontSize = fs + "pt"; }
   }
@@ -757,14 +796,17 @@
       KEYS.forEach(k => {
         const el = document.querySelector(`[data-i="${i}"][data-k="${k}"]`);
         if (!el) return;
-        if (el.classList.contains("tg")) { if (!el.classList.contains("off")) o[k] = 1; }
+        if (el.dataset.k === "dc") { const st = dcState(el); if (st) o[k] = st; }   // d/c: 0/1/2 상태
+        else if (el.classList.contains("tg")) { if (!el.classList.contains("off")) o[k] = 1; }
         else if (el.classList.contains("vzone") || el.classList.contains("hrow") || el.classList.contains("crow")) {  // 세로/가로 할 일/협진
+          const arrow = el.classList.contains("crow");
           const items = (el._items || [])
-            .filter(it => it.querySelector(".ttext").textContent.trim())
+            .filter(it => [...it.querySelectorAll(".ttext")].some(t => t.textContent.trim()))
             .map(it => {
-              const rec = { t: it.querySelector(".ttext").innerHTML };
-              const chk = it.querySelector(".tchk");
-              if (chk && chk.classList.contains("on")) rec.c = 1;
+              const tts = it.querySelectorAll(".ttext");
+              const rec = { t: tts[0].innerHTML };
+              if (arrow){ if (tts[1] && tts[1].textContent.trim()) rec.r = tts[1].innerHTML; }
+              else { const chk = it.querySelector(".tchk"); if (chk && chk.classList.contains("on")) rec.c = 1; }
               return rec;
             });
           if (items.length) o[k] = items;
@@ -785,17 +827,14 @@
       KEYS.forEach(k => {
         const el = document.querySelector(`[data-i="${i}"][data-k="${k}"]`);
         if (!el) return;
-        if (el.classList.contains("tg")) setTg(el, !!o[k]);
+        if (el.dataset.k === "dc") applyDcState(el, +o[k] || 0);   // d/c 상태 복원
+        else if (el.classList.contains("tg")) setTg(el, !!o[k]);
         else if (el.classList.contains("vzone") || el.classList.contains("hrow") || el.classList.contains("crow")) {
           const horizontal = !el.classList.contains("vzone");
           el._items = [];
           if (horizontal) el.innerHTML = "";
           else el.querySelectorAll(".todocol").forEach(c => c.innerHTML = "");
-          (Array.isArray(o[k]) ? o[k] : []).forEach(x => {
-            const t = (typeof x === "string") ? x : (x && x.t) || "";
-            const c = (x && typeof x === "object" && x.c) ? 1 : 0;
-            addTodoItem(el, t, c);
-          });
+          (Array.isArray(o[k]) ? o[k] : []).forEach(x => addTodoItem(el, (typeof x === "string") ? { t:x } : (x || {})));
           horizontal ? layoutHorz(el) : layoutVert(el);
         }
         else el.value = o[k] || "";
