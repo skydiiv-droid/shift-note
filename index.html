@@ -112,8 +112,8 @@
     font-size:var(--fs-cell); padding:0 1px; margin:0;
     line-height:1.1;
   }
-  input.f::placeholder{color:var(--ph)}
-  input.f:focus{background:#e0f2fe}
+  input.f::placeholder,textarea.f::placeholder{color:var(--ph)}
+  input.f:focus,textarea.f:focus{background:#e0f2fe}
   input.nm{font-size:var(--fs-name); text-align:center; font-weight:600}
   input.memo{font-size:var(--fs-memo)}
   input.mini{font-size:var(--fs-mini); text-align:center}
@@ -133,6 +133,17 @@
 
   .nmwrap{display:flex; flex-direction:column; justify-content:center; height:100%; gap:0.3em}
   .nmwrap .ccin{font-size:var(--fs-cell); text-align:center}   /* 상병/C.C. — 나머지와 동일 크기 */
+  /* C.C.: 최대 2줄(Enter 1번), 길면 JS가 폰트 축소 */
+  textarea.f{
+    display:block; width:100%; border:0; background:transparent; outline:0; resize:none; overflow:hidden;
+    font-family:inherit; color:var(--ink); padding:0 1px; margin:0; line-height:1.15; height:1.15em;
+    white-space:pre;
+  }
+  /* 오늘 퇴원: 이름칸 전체에 좌하→우상 얇은 빨간 대각선 */
+  table.form td.name{position:relative}
+  .dcslash{position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; display:none; z-index:1}
+  .dcslash line{stroke:#dc2626; stroke-width:1; vector-effect:non-scaling-stroke}
+  td.name.dctoday .dcslash{display:block}
 
   /* 순서변경 드래그 핸들 (인쇄 안 됨) */
   .iocell{position:relative}
@@ -194,10 +205,10 @@
   .vzone.wrapmode .todoitem{align-items:flex-start; min-height:0}
 
   /* 왼쪽 위: 가로 할 일 / 왼쪽 중간: 협진 (둘 다 flex-wrap 가로 흐름) */
-  .hzone{position:absolute; top:0; left:0; overflow:hidden}
+  .hzone{position:absolute; left:0; overflow:hidden}   /* 가로 할 일 2줄(h1/h2), top은 JS */
   .czone{position:absolute; left:0; overflow:hidden}
   .hrow,.crow{display:flex; flex-wrap:wrap; align-content:flex-start; gap:0 5px; line-height:1.35; height:100%}
-  .hrow{padding:16px 1px 0 2px}       /* 왼쪽 위 + 버튼 자리 */
+  .hrow{padding:1px 1px 0 16px}       /* 줄 맨 왼쪽 + 버튼 자리 → 항목은 + 오른쪽으로 */
   .crow{padding:1px 1px 0 16px}       /* 왼쪽 협진 + 버튼(왼쪽) 자리 */
 
   /* 항목 공통: [텍스트][마커] */
@@ -254,7 +265,8 @@
     table.form td{outline:0 !important}
     .tg.off{color:transparent !important}
     input.f:focus{background:transparent}
-    input.f::placeholder{color:transparent !important}
+    input.f::placeholder,textarea.f::placeholder{color:transparent !important}
+    textarea.f:focus{background:transparent}
     .ctxmenu{display:none !important}
     .todoadd, .draghandle{display:none !important}
     .todoitem .ttext:focus{background:transparent}
@@ -325,7 +337,7 @@
 
   // 셀 키 목록 (가져오기/내보내기 순서 고정)
   const KEYS = ["io","defe","iv","p","c","lab","ua","ekg","rad","dcd","dc","name","cc","bp","hr","bpr","s","rr","o2l","o2n","b","bn","m",
-                "todo","htodo","cons"];
+                "todo","htodo","htodo2","cons"];
   const WDAYS = ["일","월","화","수","목","금","토"];
 
   /* ── 한 환자 블록 3행 생성 ───────────────────────────── */
@@ -339,15 +351,17 @@
     const vl = (lab) => `<span class="vsl"><i>${lab}</i></span>`;
     // 오른쪽 "할 일" 영역(메모 7칸 = colspan3 rowspan3 병합). 4개 구역:
     //  · vzone(오른쪽 절반): 세로 할 일(우측 + 버튼, 2열 우→좌)
-    //  · hzone(왼쪽 위 ≈1.5칸): 가로 할 일(왼쪽 + 버튼, 괄호로 구분)
+    //  · hzone(왼쪽 위 ≈1.5칸): 가로 할 일 2줄(h1/h2), 줄마다 왼쪽 + 버튼 → 오른쪽으로 추가
     //  · cons(왼쪽 중간, V/S 위): 협진 칸, 내용 있으면 우측에 ▶
     //  · vs(왼쪽 아래, 축소): V/S 손글씨 템플릿
     const todoCell =
       `<div class="todowrap" data-i="${i}">`
       +   `<div class="vzone" data-k="todo" data-i="${i}"><div class="todocol vcL"></div><div class="todocol vcR"></div></div>`
       +   `<span class="todoadd addV no-print" data-i="${i}" title="세로 할 일 추가">+</span>`
-      +   `<div class="hzone"><div class="hrow" data-k="htodo" data-i="${i}"></div></div>`
-      +   `<span class="todoadd addH no-print" data-i="${i}" title="가로 할 일 추가">+</span>`
+      +   `<div class="hzone h1"><div class="hrow" data-k="htodo" data-i="${i}"></div></div>`
+      +   `<span class="todoadd addH no-print" data-k="htodo" data-i="${i}" title="가로 할 일 추가(윗줄)">+</span>`
+      +   `<div class="hzone h2"><div class="hrow" data-k="htodo2" data-i="${i}"></div></div>`
+      +   `<span class="todoadd addH no-print" data-k="htodo2" data-i="${i}" title="가로 할 일 추가(아랫줄)">+</span>`
       +   `<div class="czone"><div class="crow" data-k="cons" data-i="${i}"></div></div>`
       +   `<span class="todoadd addC no-print" data-i="${i}" title="협진 추가">+</span>`
       +   `<div class="vs" data-i="${i}" data-k="vs"><span class="vstpl">${vl("SBP")} /${vl("DBP")} -${vl("HR")} -${vl("RR")} -${vl("BT")}<span class="vspo2"> -(${vl("SpO2")})</span></span></div>`
@@ -360,10 +374,11 @@
         <div class="vrow">${tg("io","I/O")}${tg("defe","defe")}</div>
       </td>
       <td rowspan="3" class="name">
+        <svg class="dcslash" viewBox="0 0 100 100" preserveAspectRatio="none"><line x1="0" y1="100" x2="100" y2="0"/></svg>
         <div class="nmwrap">
           <div class="dcrow">${inp("dcd","dcdate","날짜",5)}<span class="dcwday" data-i="${i}"></span>${tg("dc","d/c","sm")}</div>
           ${inp("name","nm","이름")}
-          ${inp("cc","ccin","C.C.")}
+          <textarea class="f ccin" data-k="cc" data-i="${i}" placeholder="C.C." rows="1" wrap="off"></textarea>
         </div>
       </td>
       <td colspan="2" class="f vitals"><div class="vrow">${tg("bp","BP")}${tg("hr","HR")}${tg("bpr","T")}</div></td>
@@ -398,6 +413,7 @@
     layoutAllTodo();
     updateAllWday();
     syncAllDc();
+    fitAllCC();
     refreshOut();
   }
 
@@ -449,7 +465,7 @@
       const z = document.querySelector(`${sel}[data-i="${btn.dataset.i}"]`);
       const it = addTodoItem(z, {}); layoutHorz(z); it.querySelector(".ttext").focus(); refreshOut();
     };
-    document.querySelectorAll(".addH").forEach(btn => btn.addEventListener("click", () => addToRow(".hrow", btn)));  // 가로 할 일
+    document.querySelectorAll(".addH").forEach(btn => btn.addEventListener("click", () => addToRow(`.hrow[data-k="${btn.dataset.k}"]`, btn)));  // 가로 할 일(윗줄/아랫줄)
     document.querySelectorAll(".addC").forEach(btn => btn.addEventListener("click", () => addToRow(".crow", btn)));  // 협진
     // 이름 칸: Enter(또는 Tab) → 다음 환자 이름, Shift 동반 시 이전
     document.querySelectorAll('[data-k="name"]').forEach(el => {
@@ -462,8 +478,32 @@
         if (next){ ev.preventDefault(); next.focus(); next.select && next.select(); }
       });
     });
+    // C.C.: Enter는 1번만(최대 2줄), 길어지면 폰트 축소
+    document.querySelectorAll("textarea.ccin").forEach(el => {
+      el.addEventListener("keydown", ev => {
+        if (ev.key !== "Enter" || ev.isComposing || ev.keyCode === 229) return;
+        if (el.value.includes("\n")) ev.preventDefault();
+      });
+      el.addEventListener("compositionend", () => fitCC(el));
+      el.addEventListener("input", ev => {
+        if (ev.isComposing) { fitCC(el); return; }
+        const parts = el.value.split("\n");               // 붙여넣기 등으로 3줄 이상 → 2줄로
+        if (parts.length > 2) el.value = parts[0] + "\n" + parts.slice(1).join(" ");
+        fitCC(el);
+      });
+    });
     bindDrag();
   }
+  // C.C. 칸: 줄 수(1~2)만큼 높이, 가로로 넘치거나 이름칸 세로를 넘치면 폰트 축소
+  function fitCC(el){
+    const lines = Math.min(2, el.value.split("\n").length);
+    el.style.height = (lines * 1.15) + "em";
+    const wrap = el.closest(".nmwrap"), cell = el.closest("td");
+    let fs = 9; el.style.fontSize = fs + "pt"; let guard = 0;
+    const over = () => el.scrollWidth > el.clientWidth + 1 || (cell && wrap.scrollHeight > cell.clientHeight + 1);
+    while (over() && fs > 5 && guard++ < 10){ fs -= 0.5; el.style.fontSize = fs + "pt"; }
+  }
+  function fitAllCC(){ document.querySelectorAll("textarea.ccin").forEach(fitCC); }
   // B* 사이클: 끔 → 4 → 2 → 1 → 빈칸(입력) → 끔
   function cycleB(b){
     const bn = document.querySelector(`[data-i="${b.dataset.i}"][data-k="bn"]`);
@@ -484,7 +524,7 @@
     else { setTg(l, false); n.value = ""; }           // 끔
     refreshOut();
   }
-  // 날짜 M/D → 가까운 미래 연도로 요일 자동 (예: 12/28에 1/1 입력 → 내년)
+  // 날짜 M/D → 오늘에 가장 가까운 연도로 요일 자동 (12/28에 1/1 → 내년, 1/2에 12/30 → 작년, 어제 → 올해)
   function updateWday(el){
     const span = el.closest(".dcrow").querySelector(".dcwday");
     const m = (el.value || "").match(/^\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*$/);
@@ -492,9 +532,11 @@
     const mo = +m[1], d = +m[2];
     if (mo < 1 || mo > 12 || d < 1 || d > 31){ span.textContent = ""; return; }
     const now = new Date(); now.setHours(0,0,0,0);
-    let dt = new Date(now.getFullYear(), mo - 1, d);
-    if (dt < now) dt = new Date(now.getFullYear() + 1, mo - 1, d);
-    if (dt.getMonth() !== mo - 1){ span.textContent = ""; return; }   // 2/30 같은 무효 날짜
+    const y = now.getFullYear();
+    const dt = [y - 1, y, y + 1].map(yy => new Date(yy, mo - 1, d))
+      .filter(x => x.getMonth() === mo - 1)                           // 2/30 같은 무효 날짜 제외(2/29는 윤년만)
+      .sort((a, b) => Math.abs(a - now) - Math.abs(b - now))[0];
+    if (!dt){ span.textContent = ""; return; }
     span.textContent = "(" + WDAYS[dt.getDay()] + ")";
   }
   function updateAllWday(){ document.querySelectorAll(".dcdate").forEach(updateWday); }
@@ -571,6 +613,7 @@
     data.splice(dst, 0, moved);
     render(false);
     apply(data, true);
+    refreshOut();
   }
   function bindDrag(){
     document.querySelectorAll(".draghandle").forEach(h => {
@@ -615,7 +658,10 @@
     const dcd = document.querySelector(`[data-i="${i}"][data-k="dcd"]`);
     const name = document.querySelector(`[data-i="${i}"][data-k="name"]`);
     if (dcd) dcd.readOnly = (st === 0);
-    if (name) name.classList.toggle("struck", st === 2);
+    if (name){
+      name.classList.toggle("struck", st === 2);
+      name.closest("td").classList.toggle("dctoday", st === 2);   // 오늘 퇴원 → 빨간 대각선
+    }
   }
   function applyDcState(dc, st){
     setTg(dc, st > 0);                 // st>0 면 d/c 표시
@@ -674,7 +720,9 @@
   // 편집 가능한 조각(.ttext) 하나에 IME/삭제/서식/이동 이벤트 연결
   function wireEditable(tx, zone, it){
     tx.className = "ttext"; tx.contentEditable = "true";
-    const remove = () => { const idx = zone._items.indexOf(it); if (idx >= 0) zone._items.splice(idx,1); it.remove(); return idx; };
+    // ※ 포커스된 요소를 지우면 브라우저가 blur를 발생시켜 remove가 중첩 호출됨 → _removed로 1회만
+    const remove = () => { const idx = zone._items.indexOf(it); if (it._removed) return idx; it._removed = true;
+      if (idx >= 0) zone._items.splice(idx,1); it.remove(); return idx; };
     const empty  = () => ![...it.querySelectorAll(".ttext")].some(t => t.textContent.trim());
     // ⚠ 한글 IME: 타이핑 중 재부착하면 씹힘 → 폰트만(_fitFont), 재배치(_layout)는 추가/삭제/편집종료 때만
     tx.addEventListener("compositionstart", () => { tx._composing = true; });
@@ -693,10 +741,26 @@
         if (prev){ const p = prev.querySelector(".ttext"); p.focus();
           const r = document.createRange(); r.selectNodeContents(p); r.collapse(false);
           const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); }
+        relayoutSoon(zone);
         refreshOut();
       }
     });
-    tx.addEventListener("blur", () => { if (empty()){ remove(); refreshOut(); } });
+    tx.addEventListener("blur", () => {
+      if (zone._relayouting || it._removed) return;     // 재배치 중 재부착/삭제로 생긴 blur는 무시
+      if (empty()){ remove(); refreshOut(); }
+      relayoutSoon(zone);                               // 편집종료/삭제 → 빈자리 채우고 폰트 원복
+    });
+  }
+  // 재배치(DOM 재부착)를 포커스 이동이 끝난 뒤에, 커서를 보존하며 실행
+  function relayoutSoon(zone){
+    clearTimeout(zone._rlTimer);
+    zone._rlTimer = setTimeout(() => {
+      if (!zone.isConnected) return;
+      const c = saveCaret(zone);
+      zone._relayouting = true;
+      try { zone._layout(); } finally { zone._relayouting = false; }
+      restoreCaret(c);
+    }, 0);
   }
   // rec = {t, c}(세로/가로 할 일) 또는 {t:과, r:내용}(협진). 협진은 [과] ▶ [내용] 두 칸.
   function addTodoItem(zone, rec){
@@ -818,22 +882,26 @@
     wrap.style.width = W + "px"; wrap.style.height = H + "px";
     const W2 = Math.round(W * 0.5), rowH = H / 3;
     const vsH = Math.round(rowH * 0.8), consH = Math.round(rowH * 0.72), hzH = H - vsH - consH;
-    const vz = wrap.querySelector(".vzone"), hz = wrap.querySelector(".hzone"),
+    const vz = wrap.querySelector(".vzone"), hz1 = wrap.querySelector(".hzone.h1"), hz2 = wrap.querySelector(".hzone.h2"),
           cz = wrap.querySelector(".czone"), vs = wrap.querySelector(".vs");
+    const h1H = Math.round(hzH / 2);
     vz.style.width = (W - W2) + "px"; vz.style.height = H + "px";
     vz.querySelectorAll(".todocol").forEach(c => c.style.height = H + "px");
-    hz.style.width = W2 + "px"; hz.style.height = hzH + "px";
+    hz1.style.top = "0px";        hz1.style.width = W2 + "px"; hz1.style.height = h1H + "px";
+    hz2.style.top = h1H + "px";   hz2.style.width = W2 + "px"; hz2.style.height = (hzH - h1H) + "px";
     cz.style.top = hzH + "px"; cz.style.width = W2 + "px"; cz.style.height = consH + "px";
     vs.style.top = (hzH + consH) + "px"; vs.style.width = (W2 - 1) + "px"; vs.style.height = vsH + "px";
     wrap.querySelector(".addV").style.right = "0px";
-    wrap.querySelector(".addH").style.left = "0px";
+    const addH = wrap.querySelectorAll(".addH");
+    addH[0].style.left = "0px"; addH[0].style.top = "1px";
+    addH[1].style.left = "0px"; addH[1].style.top = (h1H + 1) + "px";
     const addC = wrap.querySelector(".addC"); addC.style.left = "0px"; addC.style.top = hzH + "px";
   }
   function layoutTodo(wrap){
     if (!wrap) return;
     positionZones(wrap);
     layoutVert(wrap.querySelector(".vzone"));
-    layoutHorz(wrap.querySelector(".hrow"));
+    wrap.querySelectorAll(".hrow").forEach(layoutHorz);
     layoutHorz(wrap.querySelector(".crow"));
     fitVS(wrap.querySelector(".vs"));
   }
@@ -892,6 +960,7 @@
       });
     }
     updateAllWday();   // 가져온 날짜의 요일 다시 표시
+    fitAllCC();
   }
   function isEmpty(){
     return collect().every(o => Object.keys(o).length === 0);
@@ -965,7 +1034,8 @@
     const blob = new Blob([encode(exportStr())], { type:"text/plain" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "handoff-" + new Date().toISOString().slice(0,10) + ".txt";
+    const n = new Date(), p2 = x => String(x).padStart(2, "0");   // 로컬(한국) 날짜 — toISOString은 UTC라 09시 전엔 전날로 찍힘
+    a.download = `handoff-${n.getFullYear()}-${p2(n.getMonth()+1)}-${p2(n.getDate())}.txt`;
     a.click();
     setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   });
