@@ -183,6 +183,7 @@
   }
   .card input:focus, .card textarea:focus{border-bottom-color:#0ea5e9; background:#f0f9ff}
   .card input:disabled{color:#cbd5e1}
+  .card select.dsel{font:inherit; font-size:15px; color:#0f172a; background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:4px 6px; min-width:0; width:100%}
   .card textarea{resize:none; overflow:hidden; line-height:1.4; display:block}
   .card ::placeholder{color:#cbd5e1}
   .hdr{display:grid; grid-template-columns:4.6em minmax(0,1fr); gap:4px 10px; align-items:end; padding-bottom:8px}
@@ -337,8 +338,39 @@
   // 체크 토글 (이전 버전과 같은 키): 켜진 것만 전체 인계장에 찍힘. null = 구분 간격
   const TOGGLES = [["io","I/O"],["defe","defe"],null,["bp","BP"],["hr","HR"],["bpr","T"],["s","S"],["rr","RR"],null,
                    ["lab","L"],["ua","U"],["ekg","E"],["rad","R"],null,["b","B*"],["m","m"]];
-  // 발열은 V/S(BT)로 보므로 제외. Pain은 부위·NRS 따로
-  const SX = ["Pain","URI","dyspnea","N/V","dizziness","H/A","diarrhea","constipation","edema","insomnia","dysuria","G/W"];
+  // 진료과 (병동 업무 매뉴얼 wiki/99_부록/부서_약어.md 기준)
+  const DEPTS = [["OS","정형외과"],["NS","신경외과"],["NR","신경과"],["GS","외과"],["GI","소화기내과"],["PU","호흡기내과"],["CV","심장내과"],
+                 ["NE","신장내과"],["ENT","이비인후과"],["URO","비뇨기과"],["OBGY","산부인과"],["ED","내분비내과"],["PED","소아과"],["DT","치과"]];
+  // 증상 버튼: 공통 + 과별. 발열은 V/S(BT)로 보므로 제외. Pain은 부위·NRS 따로
+  const SX_COMMON = ["Pain","URI","dyspnea","N/V","dizziness","H/A","constipation","diarrhea","insomnia","G/W"];
+  const SX_DEPT = {
+    OS:   ["swelling","numbness","tingling","LOM","oozing"],
+    NS:   ["motor weakness","numbness","radiating pain","seizure","mental change"],
+    NR:   ["motor weakness","dysarthria","dysphagia","seizure","mental change","tremor"],
+    GS:   ["abd. distension","flatus(-)","oozing","anorexia"],
+    GI:   ["abd. distension","melena","hematochezia","hematemesis","anorexia","dyspepsia","jaundice"],
+    PU:   ["cough","sputum","hemoptysis","wheezing"],
+    CV:   ["chest discomfort","palpitation","orthopnea","edema","syncope"],
+    NE:   ["edema","oliguria","pruritus","anorexia"],
+    ENT:  ["sore throat","nasal obstruction","rhinorrhea","epistaxis","hearing loss","dysphagia"],
+    URO:  ["dysuria","hematuria","frequency","urgency","retention"],
+    OBGY: ["vaginal bleeding","vaginal discharge"],
+    ED:   ["polyuria","polydipsia","hypoglycemia sx","palpitation"],
+    PED:  ["cough","rhinorrhea","poor oral intake","irritability"],
+    DT:   ["swelling","bleeding","trismus"],
+  };
+  const SX = [...new Set(SX_COMMON.concat(...Object.values(SX_DEPT), ["edema","dysuria"]))];   // 저장값으로 인정하는 전체 목록
+  const sxButtons = o => { const sel = sxList(o);
+    return [...new Set((SX_DEPT[o.dept] || []).concat(SX_COMMON, sel))]; };   // 과별 → 공통 → 이미 고른 것(과를 바꿔도 안 사라지게)
+  // 이전 버전의 '과 / 주치의' 자유 입력 → 과 코드 + 주치의
+  function normDept(o){
+    if (!o || !str(o.dept) || DEPTS.some(d => d[0] === o.dept)) return o;
+    const m = str(o.dept).match(/^([A-Za-z]+)\s*[\/·,]?\s*(.*)$/);
+    const code = m && DEPTS.find(d => d[0] === m[1].toUpperCase());
+    if (code){ o.dept = code[0]; if (m[2] && !str(o.doc)) o.doc = m[2]; }
+    else { if (!str(o.doc)) o.doc = o.dept; o.dept = ""; }
+    return o;
+  }
   // 이전 한글 버튼 값 → 의학용어 (발열은 버림)
   const SX_OLD = { "통증":"Pain", "복통":"Pain", "기침·가래":"URI", "호흡곤란":"dyspnea", "오심·구토":"N/V", "어지럼":"dizziness",
                    "설사":"diarrhea", "변비":"constipation", "부종":"edema", "불면":"insomnia", "배뇨곤란":"dysuria" };
@@ -511,7 +543,7 @@
     const dc = +o.dc || 0;
     const dcTxt = dc ? `<span class="dc${dc === 2 ? " big" : ""}">${esc(fmtMD(o.dcd))}${wdayOf(o.dcd)} <b>d/c</b></span>` : "";
     const as = str(o.age) + (o.sex ? "/" + o.sex : "");
-    const sub = [esc(as), hdOf(o), podOf(o)].filter(Boolean).join(" · ");
+    const sub = [esc(o.dept || ""), esc(as), hdOf(o), podOf(o)].filter(Boolean).join(" · ");
     const name = str(o.name) ? esc(o.name) : `<span class="ph">${filled(o) ? "이름" : "+"}</span>`;
     const items = [];
     (o.todo || []).filter(r => str(r.t)).forEach(r => items.push(`<span class="ti${r.c ? " done" : ""}">${esc(r.t)}<span class="ck">${r.c ? "(+)" : "(   )"}</span></span>`));
@@ -687,14 +719,16 @@
         ${inp("name", "이름", 'class="nm"')}
         <div class="row3">${inp("age", "나이", 'inputmode="numeric"')}
           <span class="seg"><button data-set="sex" data-v="M" class="${o.sex === "M" ? "on" : ""}">M</button><button data-set="sex" data-v="F" class="${o.sex === "F" ? "on" : ""}">F</button></span>
-          ${inp("dept", "과 / 주치의")}</div>
+          <select id="f-dept" data-f="dept" class="dsel"><option value="">과</option>${DEPTS.map(([c, k]) => `<option value="${c}"${o.dept === c ? " selected" : ""}>${c} ${k}</option>`).join("")}</select></div>
+        <label class="lbl" style="grid-column:1/-1"><span>주치의</span>${inp("doc", "")}</label>
       </div>
       <div class="sec"><div class="k">진단</div><div class="v">${ta("dx", "Dx / C.C.")}${inp("pmhx", "PMHx (HTN, DM …)")}
         <div class="pair"><label class="lbl"><span>입원</span>${inp("adm", "0901", 'inputmode="decimal"')}<span class="calc" id="calc-hd">${hdOf(o)}</span></label>
         <label class="lbl"><span>수술</span>${inp("op", "0901", 'inputmode="decimal"')}<span class="calc" id="calc-pod">${podOf(o)}</span></label></div>
         ${inp("opname", "수술명")}</div></div>
       <div class="sec"><div class="k">증상</div><div class="v">
-        <div class="chips">${SX.map(x => `<span class="chip${sxList(o).includes(x) ? " on" : ""}" data-sx="${x}">${x}</span>`).join("")}</div>
+        <div class="chips">${sxButtons(o).map(x => `<span class="chip${sxList(o).includes(x) ? " on" : ""}" data-sx="${x}">${esc(x)}</span>`).join("")}</div>
+        ${o.dept ? "" : `<div class="ed-help">과를 고르면 그 과에서 자주 보는 증상 버튼이 앞에 추가돼요</div>`}
         ${sxList(o).includes("Pain") ? `<div class="pair"><label class="lbl"><span>Pain 부위</span>${inp("psite", "")}</label><label class="lbl"><span>NRS</span>${inp("nrs", "0-10", 'inputmode="numeric"')}</label></div>` : ""}
         ${ta("sxt", "호소 직접 입력 (언제부터, 양상 …)")}</div></div>
       <div class="sec"><div class="k">위험</div><div class="v">
@@ -756,6 +790,7 @@
   // IV 삽입일 입력을 마치면(칸 벗어날 때) 3일 이상이면 할 일에 "IV change" 자동 추가
   $("#edCard").addEventListener("change", e => {
     const t = e.target, o0 = cur();
+    if (t.dataset.f === "dept"){ o0.dept = t.value; rerenderEd(); return; }
     // 칸을 벗어나면 입력칸도 9/1 형태로 정리
     if (DATE_FIELDS.includes(t.dataset.f) && parseMD(t.value)){ t.value = o0[t.dataset.f] = fmtMD(t.value); refreshOut(); }
     if (t.dataset.list === "lines" && t.dataset.p === "d" && parseMD(t.value)){ t.value = o0.lines[+t.dataset.j].d = fmtMD(t.value); refreshOut(); }
@@ -785,7 +820,7 @@
     const sxb = t.closest("[data-sx]");
     if (sxb){
       const l = sxList(o), x = sxb.dataset.sx;
-      o.sx = SX.filter(y => y === x ? !l.includes(x) : l.includes(y)).join(",");
+      o.sx = (l.includes(x) ? l.filter(y => y !== x) : l.concat(x)).join(",");
       rerenderEd(); return;
     }
     const set = t.closest("[data-set]");
@@ -1015,6 +1050,7 @@
     let list = Array.isArray(data.p) ? data.p : (Array.isArray(data) ? data : null);
     if (!list){ alert("인계장 데이터를 찾을 수 없어요."); return; }
     list = list.map(o => (o && typeof o === "object") ? o : {});
+    list.forEach(normDept);
     if (data.v !== 2) list = list.map(migrate);          // 이전 버전 코드 → 새 형식
     const n = list.filter(filled).length;
     if (!confirm(`지금 화면을 불러온 데이터(${n}명 기재)로 덮어쓸까요?`)) return;
