@@ -105,7 +105,8 @@
   .ln{flex:1; display:flex; align-items:center; gap:3px; white-space:nowrap; overflow:hidden; min-height:0}
   .ln1{font-size:9pt; font-weight:600}
   .ln1 small{font-weight:400; font-size:.85em}
-  .ln2{font-size:7.5pt}
+  .ln2{font-size:7.5pt; flex:1.4; flex-wrap:wrap; align-content:center; row-gap:1px; white-space:normal}   /* 태그 많으면 2줄 */
+  .ln2 > *{white-space:nowrap}
   .ln3{font-size:8pt}
   .t{border:0.5pt solid #333; border-radius:2px; padding:0 2px; line-height:1.25}
   .t.hi{background:#111; color:#fff; border-color:#111; font-weight:700}
@@ -175,9 +176,25 @@
   .chip.q.alt{background:#dc2626; border-color:#dc2626; color:#fff; font-weight:700}
   .gap{width:8px}
   .li{display:grid; gap:6px; align-items:center}
-  .li.line{grid-template-columns:minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,1fr) 2.6em 1.4em}
+  /* 라인·튜브: 종류마다 사정 항목이 다른 작은 카드 */
+  .lcard{border:1px solid #e2e8f0; border-radius:8px; padding:6px 8px; display:flex; flex-direction:column; gap:4px}
+  .lc-top{display:flex; align-items:center; gap:8px}
+  .lc-type{font-weight:700; font-size:14px; white-space:nowrap}
+  .lc-top input.lc-name{flex:1; font-weight:700}
+  .lc-top .lc-date{width:5.5em; flex:0 0 auto}
+  .lc-top .x{margin-left:auto}
+  .lc-fields{display:flex; flex-wrap:wrap; gap:4px 12px; align-items:center}
+  .lf{display:flex; align-items:center; gap:4px; min-width:0}
+  .lf > span{font-size:12px; color:#64748b; white-space:nowrap}
+  .card .lf input{width:4.2em}
+  .card .lf input.w{width:8em}
+  .seg.sm button{font-size:12px; padding:2px 8px}
+  .lpick{display:flex; flex-wrap:wrap; gap:5px}
+  .lpick .chip{color:#0f172a}
   .li.todo{grid-template-columns:1.6em minmax(0,1fr) 1.4em}
   .li.cons{grid-template-columns:minmax(0,5em) auto minmax(0,1fr) 1.4em}
+  .x{border:0; background:transparent; color:#94a3b8; font-size:20px; cursor:pointer; padding:0; line-height:1}
+  .x:hover{color:#dc2626}
   .li .x{border:0; background:transparent; color:#94a3b8; font-size:20px; cursor:pointer; padding:0; line-height:1}
   .li .x:hover{color:#dc2626}
   .li .cb{border:1.5px solid #64748b; border-radius:4px; width:1.3em; height:1.3em; background:#fff; cursor:pointer; padding:0; font-size:13px; line-height:1; color:transparent}
@@ -269,7 +286,6 @@
 
 <datalist id="dl-diet"><option>NPO</option><option>SOW</option><option>RD</option><option>LD</option><option>DM식</option><option>저염식</option><option>TF</option></datalist>
 <datalist id="dl-act"><option>ABR</option><option>BR</option><option>자유</option><option>보조보행</option><option>W/C</option></datalist>
-<datalist id="dl-line"><option>IV</option><option>Foley</option><option>L-tube</option><option>Hemovac</option><option>JP</option><option>PCD</option><option>C-line</option><option>PICC</option><option>A-line</option><option>chest tube</option></datalist>
 
 <script>
 (function(){
@@ -285,7 +301,7 @@
   const MED_TYPES = ["A","P","U"];
   // 체크 토글 (이전 버전과 같은 키): 켜진 것만 전체 인계장에 찍힘. null = 구분 간격
   const TOGGLES = [["io","I/O"],["defe","defe"],null,["bp","BP"],["hr","HR"],["bpr","T"],["s","S"],["rr","RR"],null,
-                   ["p","P"],["c","C"],null,["lab","L"],["ua","U"],["ekg","E"],["rad","R"],null,["b","B*"],["m","m"]];
+                   ["lab","L"],["ua","U"],["ekg","E"],["rad","R"],null,["b","B*"],["m","m"]];
   const IV_DUE = 3;   // IV 경과일 경고 기준(일)
   // V/S 칸에 형광펜으로 표시되는 토글 (전체탭 글씨에서는 빠짐). B* = BST → V/S 끝 [BST]
   const VS_KEYS = ["bp","hr","bpr","s","rr","b"];
@@ -294,7 +310,7 @@
   /* ── 데이터: 환자 배열이 단일 진실원. 두 화면은 여기서 그리기만 ── */
   let count = MAX;
   let P = Array.from({ length:count }, () => ({}));
-  let edIdx = 0, pvOn = false;
+  let edIdx = 0, pvOn = false, edLinePick = false;
 
   const esc = v => String(v == null ? "" : v).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const str = v => (v == null ? "" : String(v)).trim();
@@ -353,6 +369,37 @@
   const hdOf  = o => { const d = daysAgo(o.adm); return d === null ? "" : "HD " + (d + 1); };
   const podOf = o => { const d = daysAgo(o.op);  return d === null ? "" : "POD " + d; };
   const isIV  = l => /^\s*iv\s*$/i.test(l.t || "");
+  /* 라인·튜브 종류별 사정 항목: [키, 라벨, 선택지(있으면 버튼), 전체탭 표시 형식]
+     전체탭 태그엔 fmt 있는 것만 짧게 (부위·성상 등은 개별탭에만) */
+  const LF = {
+    s:   ["s",   "부위"],
+    g:   ["g",   "G",      ["18","20","22","24"], v => v + "G"],
+    fr:  ["fr",  "Fr",     null, v => v + "Fr"],
+    way: ["way", "way",    ["2","3"], v => v + "way"],
+    cm:  ["cm",  "고정 cm", null, v => v + "cm"],
+    nos: ["nos", "비공",   ["Rt","Lt"]],
+    cc:  ["cc",  "배액 cc", null, v => v + "cc"],
+    col: ["col", "성상"],
+    suc: ["suc", "suction"],
+    lu:  ["lu",  "lumen",  ["1","2","3"]],
+    ext: ["ext", "외부 cm", null, v => v + "cm"],
+    memo:["memo","메모"],
+  };
+  const LINE_TYPES = {
+    "IV":         ["s","g"],
+    "Foley":      ["fr","way"],
+    "L-tube":     ["fr","cm","nos"],
+    "Hemovac":    ["s","cc","col"],
+    "JP":         ["s","cc","col"],
+    "PCD":        ["s","fr","cc","col"],
+    "chest tube": ["s","fr","cc","col","suc"],
+    "C-line":     ["s","lu"],
+    "PICC":       ["s","lu","ext"],
+    "A-line":     ["s"],
+  };
+  const lineType = l => Object.keys(LINE_TYPES).find(k => k.toLowerCase() === str(l.t).toLowerCase());
+  const lineFields = l => (LINE_TYPES[lineType(l)] || ["s","memo"]).map(k => LF[k]);
+  const lineSummary = l => lineFields(l).filter(f => f[3] && str(l[f[0]])).map(f => f[3](str(l[f[0]]))).join(" ");
   const lineDays = l => daysAgo(l.d);
 
   /* ── 이전 버전(v1) 데이터 → 새 형식 ── */
@@ -364,7 +411,7 @@
   function migrate(o){
     o = (o && typeof o === "object") ? o : {};
     const n = {};
-    ["io","defe","bp","hr","bpr","s","rr","p","c","lab","ua","ekg","rad","b","bn","m","dc","dcd","name","med"].forEach(k => { if (o[k] != null) n[k] = o[k]; });
+    ["io","defe","bp","hr","bpr","s","rr","lab","ua","ekg","rad","b","bn","m","dc","dcd","name","med"].forEach(k => { if (o[k] != null) n[k] = o[k]; });
     if (o.cc) n.dx = o.cc;
     if (o.iv) n.lines = [{ t:"IV", d:o.iv }];
     if (o.o2l) n.o2 = (o.o2n ? o.o2n : "") + "L";
@@ -395,7 +442,8 @@
     if (str(o.o2)) h += t("O2 " + str(o.o2));
     (o.lines || []).filter(l => str(l.t)).forEach(l => {
       const d = lineDays(l);
-      h += t(str(l.t) + (d !== null ? " D" + d : ""), isIV(l) && d !== null && d >= IV_DUE);
+      const sm = lineSummary(l);
+      h += t(str(l.t) + (sm ? " " + sm : "") + (d !== null ? " D" + d : ""), isIV(l) && d !== null && d >= IV_DUE);
     });
     if (o.med) MED_TYPES.forEach(ty => (o.med[ty] || []).forEach(s => { if (+s > 0 && +s <= 3) h += `<span class="medc m${+s}">${ty}</span>`; }));
     return h;
@@ -450,7 +498,7 @@
     document.querySelectorAll("#rows .nm-top").forEach(el => fitWidth(el, 7, 5));
     document.querySelectorAll("#rows .nm-sub").forEach(el => fitWidth(el, 7, 5));
     document.querySelectorAll("#rows .ln1").forEach(el => fitWidth(el, 9, 5.5));
-    document.querySelectorAll("#rows .ln2").forEach(el => fitWidth(el, 7.5, 5));
+    document.querySelectorAll("#rows .ln2").forEach(el => fitHeight(el, 7.5, 5));
     document.querySelectorAll("#rows .ln3").forEach(el => fitWidth(el, 8, 5));
     document.querySelectorAll("#rows .todobox").forEach(el => fitHeight(el, 8, 5));
     $("#cntLabel").textContent = count + "명";
@@ -525,12 +573,20 @@
   }
   function renderEd(){
     const o = cur(), dc = +o.dc || 0;
-    const lines = (o.lines || []).map((l, j) => `<div class="li line">
-        <input id="l-${j}-t" data-list="lines" data-j="${j}" data-p="t" value="${esc(l.t)}" placeholder="종류" list="dl-line" autocomplete="off">
-        <input id="l-${j}-s" data-list="lines" data-j="${j}" data-p="s" value="${esc(l.s)}" placeholder="부위" autocomplete="off">
-        <input id="l-${j}-d" data-list="lines" data-j="${j}" data-p="d" value="${esc(l.d)}" placeholder="삽입 m/d" inputmode="numeric" autocomplete="off">
-        <span data-lcalc="${j}">${lineCalc(l)}</span>
-        <button class="x" data-del="lines" data-j="${j}" title="삭제">×</button></div>`).join("");
+    if (renderEd._idx !== edIdx){ edLinePick = false; renderEd._idx = edIdx; }
+    const lin = (j, p, ph, cls, extra) => `<input id="l-${j}-${p}" data-list="lines" data-j="${j}" data-p="${p}" value="${esc(o.lines[j][p])}" placeholder="${ph || ""}" class="${cls || ""}" autocomplete="off" ${extra || ""}>`;
+    const lines = (o.lines || []).map((l, j) => {
+      const known = lineType(l);
+      const fields = lineFields(l).map(([k, lab, opts]) => opts
+        ? `<span class="lf"><span>${lab}</span><span class="seg sm">${opts.map(v => `<button data-lopt="${j}" data-p="${k}" data-v="${v}" class="${str(l[k]) === v ? "on" : ""}">${v}</button>`).join("")}</span></span>`
+        : `<span class="lf"><span>${lab}</span>${lin(j, k, "", ["s","col","memo","suc"].includes(k) ? "w" : "", ["fr","cm","cc","ext"].includes(k) ? 'inputmode="decimal"' : "")}</span>`).join("");
+      return `<div class="lcard">
+        <div class="lc-top">${known ? `<span class="lc-type">${esc(known)}</span>` : lin(j, "t", "종류", "lc-name")}
+          ${lin(j, "d", "삽입 m/d", "lc-date", 'inputmode="numeric"')}<span data-lcalc="${j}">${lineCalc(l)}</span>
+          <button class="x" data-del="lines" data-j="${j}" title="삭제">×</button></div>
+        <div class="lc-fields">${fields}</div></div>`;
+    }).join("");
+    const lpick = edLinePick ? `<div class="lpick">${Object.keys(LINE_TYPES).concat("기타").map(k => `<span class="chip" data-addline="${k}">${k}</span>`).join("")}</div>` : "";
     const todos = (o.todo || []).map((r, j) => `<div class="li todo${r.c ? " done" : ""}">
         <button class="cb${r.c ? " on" : ""}" data-chk="${j}" title="완료">✓</button>
         <input id="t-${j}" data-list="todo" data-j="${j}" data-p="t" value="${esc(r.t)}" placeholder="할 일 (Enter: 다음 줄)" autocomplete="off" enterkeyhint="next">
@@ -564,7 +620,7 @@
       <div class="sec"><div class="k">상태</div><div class="v">${ta("st", "의식, 이상 V/S, 통증 …")}
         <label class="lbl"><span>O2</span>${inp("o2", "NC 2L")}</label>
         <div class="pair"><label class="lbl"><span>식이</span>${inp("diet", "", 'list="dl-diet"')}</label><label class="lbl"><span>활동</span>${inp("act", "", 'list="dl-act"')}</label></div></div></div>
-      <div class="sec"><div class="k">라인</div><div class="v">${lines}<button class="addbtn" data-add="lines">+ 라인·튜브</button></div></div>
+      <div class="sec"><div class="k">라인</div><div class="v">${lines}<button class="addbtn" data-linepick="1">${edLinePick ? "닫기" : "+ 라인·튜브"}</button>${lpick}</div></div>
       <div class="sec"><div class="k">약</div><div class="v"><div class="mzone" id="mz">${medHTML(o.med)}</div>
         <div class="ed-help">A 항생제 · P 진통/해열 · U URI — 탭: 경구(초록)→주사(파랑)→기타(노랑)→끔 · 길게: 추가 · 두 번 탭: 삭제</div>
         ${inp("mednote", "약 메모 (ceftriaxone D3 …)")}</div></div>
@@ -648,11 +704,26 @@
       if (o.dc === 2) o.dcd = todayMD();
       rerenderEd(o.dc === 1 ? "f-dcd" : null); return;
     }
+    if (t.closest("[data-linepick]")){ edLinePick = !edLinePick; rerenderEd(); return; }
+    const al = t.closest("[data-addline]");
+    if (al){
+      o.lines = o.lines || [];
+      o.lines.push({ t: al.dataset.addline === "기타" ? "" : al.dataset.addline });
+      edLinePick = false;
+      const j = o.lines.length - 1;
+      rerenderEd(al.dataset.addline === "기타" ? `l-${j}-t` : `l-${j}-d`); return;
+    }
+    const lo = t.closest("[data-lopt]");
+    if (lo){
+      const l = o.lines[+lo.dataset.lopt];
+      l[lo.dataset.p] = str(l[lo.dataset.p]) === lo.dataset.v ? "" : lo.dataset.v;
+      rerenderEd(); return;
+    }
     const add = t.closest("[data-add]");
     if (add){
       const k = add.dataset.add; o[k] = o[k] || []; o[k].push({});
       const j = o[k].length - 1;
-      rerenderEd(k === "lines" ? `l-${j}-t` : k === "todo" ? `t-${j}` : `c-${j}-t`); return;
+      rerenderEd(k === "todo" ? `t-${j}` : `c-${j}-t`); return;
     }
     const del = t.closest("[data-del]");
     if (del){ (o[del.dataset.del] || []).splice(+del.dataset.j, 1); rerenderEd(); return; }
