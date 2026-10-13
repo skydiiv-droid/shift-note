@@ -70,13 +70,13 @@
   .sync button:hover{background:#64748b}
 
   /* ───────── 전체 인계장 (A4, 자동 요약) ───────── */
-  .stage{padding:14px; display:flex; justify-content:center}
+  .stage{padding:14px; display:flex; flex-direction:column; align-items:center; gap:14px}
   .sheet{width:17cm; background:#fff; box-shadow:0 2px 12px rgba(15,23,42,.18); transform-origin:top center}
   table.form{width:16.76cm; margin:0 auto; border-collapse:collapse; table-layout:fixed}   /* 17cm→16.76: 인쇄 우측 잘림 방지 */
   table.form td{padding:0; border:var(--line); vertical-align:top; overflow:hidden; color:var(--ink)}
   @media screen{
-    #rows tr:hover td{background:#f8fafc; cursor:pointer}
-    #rows tr.drop-target td{background:#e0f2fe}
+    #sheets tr:hover td{background:#f8fafc; cursor:pointer}
+    #sheets tr.drop-target td{background:#e0f2fe}
   }
 
   /* 이름 칸 */
@@ -105,6 +105,7 @@
   .ln{flex:1; display:flex; align-items:center; gap:3px; white-space:nowrap; overflow:hidden; min-height:0}
   .ln1{font-size:9pt; font-weight:600}
   .ln1 small{font-weight:400; font-size:.85em}
+  .ln1 .co{font-weight:400; margin-left:4px}
   .ln2{font-size:7.5pt; flex:1.4; flex-wrap:wrap; align-content:center; row-gap:1px; white-space:normal}   /* 태그 많으면 2줄 */
   .ln2 > *{white-space:nowrap}
   .ln3{font-size:8pt}
@@ -166,7 +167,7 @@
   .tv-empty{color:#64748b; text-align:center; padding:24px 0; font-size:14px}
 
   /* 전체탭 맨 위 병동 공통 줄 (공통 할 일 있을 때만) */
-  #rows tr.wrow td{vertical-align:middle}
+  #sheets tr.wrow td{vertical-align:middle}
   .wbox{display:flex; flex-wrap:wrap; align-content:center; gap:0 8px; padding:1px 4px; height:100%; font-size:8pt; line-height:1.3; overflow:hidden}
   .wbox .wl{font-weight:700}
 
@@ -259,9 +260,10 @@
     body.pv .stage, body.tv .stage{position:static; visibility:visible}
     .tvw{display:none !important}
     .stage{padding:0; display:block}
-    .sheet{width:17cm; box-shadow:none; transform:none !important; margin-bottom:0 !important}
+    .sheet{width:17cm; box-shadow:none; transform:none !important; margin-bottom:0 !important; break-after:page; page-break-after:always}
+    .sheet:last-child{break-after:auto; page-break-after:auto}
     .draghandle,.ph{display:none !important}
-    #rows tr td{background:transparent !important}
+    #sheets tr td{background:transparent !important}
     .sheet, .sheet *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     html,body{width:17cm}
   }
@@ -299,14 +301,7 @@
   </div>
 </div>
 
-<div class="stage">
-  <div class="sheet" id="sheet">
-    <table class="form">
-      <colgroup><col style="width:2.4cm"><col style="width:6.9cm"><col style="width:7.46cm"></colgroup>
-      <tbody id="rows"></tbody>
-    </table>
-  </div>
-</div>
+<div class="stage" id="sheets"></div>
 
 <div class="pvtoggle sheetonly"><button id="pvOpen">개별 인계장</button><button class="sub" id="tvOpen1">할 일 모아보기</button></div>
 
@@ -332,7 +327,8 @@
   "use strict";
   const $ = s => document.querySelector(s);
 
-  const MAX = 13;
+  const MAX = 26;      // 최대 2장 (13명 넘으면 2장으로 나눔)
+  const PER_PAGE = 13;
   const USABLE_CM = 29.7 - 1.401*2;   // 26.898cm
   const MAX_BLK_CM = 0.95*3;
   const PX_CM = 96/2.54;
@@ -341,13 +337,21 @@
   // 체크 토글 (이전 버전과 같은 키): 켜진 것만 전체 인계장에 찍힘. null = 구분 간격
   const TOGGLES = [["io","I/O"],["defe","defe"],null,["bp","BP"],["hr","HR"],["bpr","T"],["s","S"],["rr","RR"],null,
                    ["lab","L"],["ua","U"],["ekg","E"],["rad","R"],null,["b","B*"],["m","m"]];
+  const SX = ["통증","발열","기침·가래","호흡곤란","오심·구토","어지럼","복통","설사","변비","부종","불면","배뇨곤란"];
+  const sxList = o => str(o.sx) ? str(o.sx).split(",").filter(Boolean) : [];
+  // 전체탭 한 줄: c/o 통증(Rt knee) NRS 5, 기침·가래, 직접 쓴 호소
+  function sxSummary(o){
+    const a = sxList(o).map(x => x === "통증" ? "통증" + (str(o.psite) ? `(${str(o.psite)})` : "") + (str(o.nrs) ? " NRS " + str(o.nrs) : "") : x);
+    if (str(o.sxt)) a.push(str(o.sxt).replace(/\n/g, " / "));
+    return a.join(", ");
+  }
   const IV_DUE = 3;   // IV 경과일 경고 기준(일)
   // V/S 칸에 형광펜으로 표시되는 토글 (전체탭 글씨에서는 빠짐). B* = BST → V/S 끝 [BST]
   const VS_KEYS = ["bp","hr","bpr","s","rr","b"];
   const VSQ = [8, 4, 2, 1];   // V/S 측정 간격(hr). 기본 q8hr, 아닌 것만 전체탭에 빨갛게
 
   /* ── 데이터: 환자 배열이 단일 진실원. 두 화면은 여기서 그리기만 ── */
-  let count = MAX;
+  let count = PER_PAGE;   // 기본 13칸(1장)
   let P = Array.from({ length:count }, () => ({}));
   let W = [];   // 병동 공통 할 일 [{t, c}] — 환자와 무관한 업무
   let edIdx = 0, pvOn = false, edLinePick = false;
@@ -374,7 +378,15 @@
   const anyData = () => P.some(filled) || wardItems().length > 0;
 
   /* ── 날짜 ── */
-  const parseMD = v => { const m = (v || "").match(/^\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*$/); return m ? [+m[1], +m[2]] : null; };
+  // 폰 숫자 키패드엔 / 가 없음 → 0901, 9.01, 09.01, 9/1, 9-1 모두 m/d로 인식
+  function parseMD(v){
+    v = (v || "").trim();
+    let m = v.match(/^(\d{1,2})\s*[\/.\-]\s*(\d{1,2})\.?$/);
+    if (!m) m = v.match(/^(\d{2})(\d{2})$/);
+    return m ? [+m[1], +m[2]] : null;
+  }
+  const fmtMD = v => { const md = parseMD(v); return md ? md[0] + "/" + md[1] : str(v); };
+  const DATE_FIELDS = ["adm", "op", "dcd"];
   // m/d → 오늘에 가장 가까운 연도로 요일
   function wdayOf(v){
     const md = parseMD(v); if (!md) return "";
@@ -493,7 +505,7 @@
   const togglesText = o => TOGGLES.filter(Boolean).filter(([k]) => o[k] && !VS_KEYS.includes(k)).map(([, l]) => l).join(" ");
   function blockHTML(o, i){
     const dc = +o.dc || 0;
-    const dcTxt = dc ? `<span class="dc${dc === 2 ? " big" : ""}">${esc(o.dcd || "")}${wdayOf(o.dcd)} <b>d/c</b></span>` : "";
+    const dcTxt = dc ? `<span class="dc${dc === 2 ? " big" : ""}">${esc(fmtMD(o.dcd))}${wdayOf(o.dcd)} <b>d/c</b></span>` : "";
     const as = str(o.age) + (o.sex ? "/" + o.sex : "");
     const sub = [esc(as), hdOf(o), podOf(o)].filter(Boolean).join(" · ");
     const name = str(o.name) ? esc(o.name) : `<span class="ph">${filled(o) ? "이름" : "+"}</span>`;
@@ -512,7 +524,7 @@
         </div>
       </td>
       <td class="c-sum"><div class="sumbox">
-        <div class="ln ln1">${str(o.dx) ? esc(o.dx).replace(/\n/g, " / ") : ""}${str(o.pmhx) ? ` <small>(${esc(o.pmhx)})</small>` : ""}</div>
+        <div class="ln ln1">${str(o.dx) ? esc(o.dx).replace(/\n/g, " / ") : ""}${str(o.pmhx) ? ` <small>(${esc(o.pmhx)})</small>` : ""}${sxSummary(o) ? `<span class="co">c/o ${esc(sxSummary(o))}</span>` : ""}</div>
         <div class="ln ln2">${tagsHTML(o)}</div>
         <div class="ln ln3"><span class="tgs">${esc(togglesText(o))}</span>${vsTpl(o)}</div>
       </div></td>
@@ -533,23 +545,33 @@
     const wi = wardItems();
     const wrow = wi.length ? `<tr class="wrow"><td colspan="3"><div class="wbox"><span class="wl">병동 공통</span>${wi.map(r =>
       `<span class="ti${r.c ? " done" : ""}">${esc(r.t)}<span class="ck">${r.c ? "(+)" : "(\u00a0\u00a0\u00a0)"}</span></span>`).join("")}</div></td></tr>` : "";
-    $("#rows").innerHTML = wrow + P.map(blockHTML).join("");
-    // 인원 수에 맞춰 블록 높이를 늘려 한 페이지를 꽉 채움 (정수 px: 반올림 누적으로 페이지 넘김 방지)
-    // 공통 줄이 있으면 그만큼 환자 칸을 줄여서 A4 1장 유지
+    // 13명 이하 1장, 넘으면 2장에 반씩 (공통 줄은 1장 맨 위)
+    const n1 = count <= PER_PAGE ? count : Math.ceil(count / 2);
+    const pages = count <= PER_PAGE ? [[0, count]] : [[0, n1], [n1, count]];
+    $("#sheets").innerHTML = pages.map(([a, z], pg) => `<div class="sheet"><table class="form">
+        <colgroup><col style="width:2.4cm"><col style="width:6.9cm"><col style="width:7.46cm"></colgroup>
+        <tbody>${pg === 0 ? wrow : ""}${P.slice(a, z).map((o, k) => blockHTML(o, a + k)).join("")}</tbody></table></div>`).join("");
+    // 장마다 인원 수에 맞춰 블록 높이를 늘려 꽉 채움 (정수 px: 반올림 누적으로 페이지 넘김 방지)
+    // 공통 줄이 있으면 그만큼 1장 환자 칸을 줄여서 1장 유지
     const usablePx = Math.floor(USABLE_CM * PX_CM) - 2;
     const wH = wi.length ? Math.round(0.75 * PX_CM) : 0;
-    const per = Math.min(Math.floor(MAX_BLK_CM * PX_CM), Math.floor((usablePx - wH) / count));
-    document.querySelectorAll("#rows tr[data-i]").forEach(tr => tr.style.height = per + "px");
-    document.querySelectorAll("#rows tr[data-i] td > div").forEach(d => d.style.height = (per - 1) + "px");
-    const wr = $("#rows tr.wrow");
+    pages.forEach(([a, z], pg) => {
+      const per = Math.min(Math.floor(MAX_BLK_CM * PX_CM), Math.floor((usablePx - (pg === 0 ? wH : 0)) / (z - a)));
+      for (let i = a; i < z; i++){
+        const tr = document.querySelector(`#sheets tr[data-i="${i}"]`);
+        tr.style.height = per + "px";
+        tr.querySelectorAll("td > div").forEach(d => d.style.height = (per - 1) + "px");
+      }
+    });
+    const wr = $("#sheets tr.wrow");
     if (wr){ wr.style.height = wH + "px"; wr.querySelector(".wbox").style.height = (wH - 1) + "px"; fitHeight(wr.querySelector(".wbox"), 8, 5); }
-    document.querySelectorAll("#rows .nm-name").forEach(el => fitWidth(el, 10.5, 6));
-    document.querySelectorAll("#rows .nm-top").forEach(el => fitWidth(el, 7, 5));
-    document.querySelectorAll("#rows .nm-sub").forEach(el => fitWidth(el, 7, 5));
-    document.querySelectorAll("#rows .ln1").forEach(el => fitWidth(el, 9, 5.5));
-    document.querySelectorAll("#rows .ln2").forEach(el => fitHeight(el, 7.5, 5));
-    document.querySelectorAll("#rows .ln3").forEach(el => fitWidth(el, 8, 5));
-    document.querySelectorAll("#rows .todobox").forEach(el => fitHeight(el, 8, 5));
+    document.querySelectorAll("#sheets .nm-name").forEach(el => fitWidth(el, 10.5, 6));
+    document.querySelectorAll("#sheets .nm-top").forEach(el => fitWidth(el, 7, 5));
+    document.querySelectorAll("#sheets .nm-sub").forEach(el => fitWidth(el, 7, 5));
+    document.querySelectorAll("#sheets .ln1").forEach(el => fitWidth(el, 9, 5.5));
+    document.querySelectorAll("#sheets .ln2").forEach(el => fitHeight(el, 7.5, 5));
+    document.querySelectorAll("#sheets .ln3").forEach(el => fitWidth(el, 8, 5));
+    document.querySelectorAll("#sheets .todobox").forEach(el => fitHeight(el, 8, 5));
     $("#cntLabel").textContent = count + "명";
     scaleToFit();
     refreshOut();
@@ -557,14 +579,14 @@
   }
 
   /* ── 전체 인계장: 칸 누르면 개별 인계장 / ≡ 드래그로 순서 변경 ── */
-  $("#rows").addEventListener("click", e => {
+  $("#sheets").addEventListener("click", e => {
     if (e.target.closest(".draghandle")) return;
     if (e.target.closest("tr.wrow")){ openTv(); return; }
     const tr = e.target.closest("tr[data-i]"); if (tr) openEd(+tr.dataset.i);
   });
   let dragSrc = null;
   function blockIndexAtY(y){
-    const rows = [...document.querySelectorAll("#rows tr[data-i]")];
+    const rows = [...document.querySelectorAll("#sheets tr[data-i]")];
     for (const tr of rows){
       const r = tr.getBoundingClientRect();
       if (y < r.bottom) return { i:+tr.dataset.i, before: y < (r.top + r.bottom) / 2 };
@@ -572,17 +594,17 @@
     return rows.length ? { i:+rows[rows.length-1].dataset.i, before:false } : null;
   }
   function markTarget(t){
-    document.querySelectorAll("#rows tr.drop-target").forEach(tr => tr.classList.remove("drop-target"));
-    if (t && t.i !== dragSrc){ const tr = document.querySelector(`#rows tr[data-i="${t.i}"]`); if (tr) tr.classList.add("drop-target"); }
+    document.querySelectorAll("#sheets tr.drop-target").forEach(tr => tr.classList.remove("drop-target"));
+    if (t && t.i !== dragSrc){ const tr = document.querySelector(`#sheets tr[data-i="${t.i}"]`); if (tr) tr.classList.add("drop-target"); }
   }
   function endDrag(){ dragSrc = null; document.body.classList.remove("dragging"); markTarget(null); }
-  $("#rows").addEventListener("pointerdown", e => {
+  $("#sheets").addEventListener("pointerdown", e => {
     const h = e.target.closest(".draghandle"); if (!h) return;
     e.preventDefault(); dragSrc = +h.dataset.i; document.body.classList.add("dragging");
     try { h.setPointerCapture(e.pointerId); } catch(_){}
   });
-  $("#rows").addEventListener("pointermove", e => { if (dragSrc !== null) markTarget(blockIndexAtY(e.clientY)); });
-  $("#rows").addEventListener("pointerup", e => {
+  $("#sheets").addEventListener("pointermove", e => { if (dragSrc !== null) markTarget(blockIndexAtY(e.clientY)); });
+  $("#sheets").addEventListener("pointerup", e => {
     if (dragSrc === null) return;
     const t = blockIndexAtY(e.clientY), src = dragSrc; endDrag();
     if (!t) return;
@@ -593,7 +615,7 @@
     const [mv] = P.splice(src, 1); P.splice(dst, 0, mv);
     renderSheet();
   });
-  $("#rows").addEventListener("pointercancel", endDrag);
+  $("#sheets").addEventListener("pointercancel", endDrag);
 
   /* ════════════ 개별 인계장 (입력) ════════════ */
   const cur = () => P[edIdx];
@@ -607,7 +629,9 @@
     $("#edNext").disabled = k < 0 || k >= list.length - 1;
     $("#edUp").disabled = edIdx <= 0;
     $("#edDown").disabled = edIdx >= count - 1;
-    const c = $("#edNav .cur"); if (c) c.scrollIntoView({ block:"nearest", inline:"center" });
+    // scrollIntoView는 페이지 전체를 위로 끌어올림 → 환자 버튼 줄만 가로로 스크롤
+    const nav = $("#edNav"), c = $("#edNav .cur");
+    if (c) nav.scrollLeft = c.offsetLeft - nav.offsetLeft - (nav.clientWidth - c.offsetWidth) / 2;
   }
   // 모든 칸에 고정 id → 다시 그려도 포커스·커서 복원
   const inp  = (f, ph, extra) => `<input id="f-${f}" data-f="${f}" value="${esc(cur()[f])}" placeholder="${ph || ""}" autocomplete="off" ${extra || ""}>`;
@@ -633,7 +657,7 @@
         : `<span class="lf"><span>${lab}</span>${lin(j, k, "", ["s","col","memo","suc"].includes(k) ? "w" : "", ["fr","cm","cc","ext"].includes(k) ? 'inputmode="decimal"' : "")}</span>`).join("");
       return `<div class="lcard">
         <div class="lc-top">${known ? `<span class="lc-type">${esc(known)}</span>` : lin(j, "t", "종류", "lc-name")}
-          ${lin(j, "d", "삽입 m/d", "lc-date", 'inputmode="numeric"')}<span data-lcalc="${j}">${lineCalc(l)}</span>
+          ${lin(j, "d", "삽입 0901", "lc-date", 'inputmode="decimal"')}<span data-lcalc="${j}">${lineCalc(l)}</span>
           <button class="x" data-del="lines" data-j="${j}" title="삭제">×</button></div>
         <div class="lc-fields">${fields}</div></div>`;
     }).join("");
@@ -662,13 +686,17 @@
           ${inp("dept", "과 / 주치의")}</div>
       </div>
       <div class="sec"><div class="k">진단</div><div class="v">${ta("dx", "Dx / C.C.")}${inp("pmhx", "PMHx (HTN, DM …)")}
-        <div class="pair"><label class="lbl"><span>입원</span>${inp("adm", "m/d", 'inputmode="numeric"')}<span class="calc" id="calc-hd">${hdOf(o)}</span></label>
-        <label class="lbl"><span>수술</span>${inp("op", "m/d", 'inputmode="numeric"')}<span class="calc" id="calc-pod">${podOf(o)}</span></label></div>
+        <div class="pair"><label class="lbl"><span>입원</span>${inp("adm", "0901", 'inputmode="decimal"')}<span class="calc" id="calc-hd">${hdOf(o)}</span></label>
+        <label class="lbl"><span>수술</span>${inp("op", "0901", 'inputmode="decimal"')}<span class="calc" id="calc-pod">${podOf(o)}</span></label></div>
         ${inp("opname", "수술명")}</div></div>
+      <div class="sec"><div class="k">증상</div><div class="v">
+        <div class="chips">${SX.map(x => `<span class="chip${sxList(o).includes(x) ? " on" : ""}" data-sx="${x}">${x}</span>`).join("")}</div>
+        ${sxList(o).includes("통증") ? `<div class="pair"><label class="lbl"><span>통증 부위</span>${inp("psite", "")}</label><label class="lbl"><span>NRS</span>${inp("nrs", "0-10", 'inputmode="numeric"')}</label></div>` : ""}
+        ${ta("sxt", "호소 직접 입력 (언제부터, 양상 …)")}</div></div>
       <div class="sec"><div class="k">위험</div><div class="v">
         <div class="pair stack"><label class="lbl"><span>알러지</span>${inp("allergy", "없으면 비움")}</label><label class="lbl"><span>격리</span>${inp("iso", "VRE, CRE …")}</label></div>
         <div class="chips">${chip("fall", "낙상", 1)}${chip("sore", "욕창", 1)}${chip("dnr", "DNR", 1)}</div></div></div>
-      <div class="sec"><div class="k">상태</div><div class="v">${ta("st", "의식, 이상 V/S, 통증 …")}
+      <div class="sec"><div class="k">상태</div><div class="v">${ta("st", "의식, 이상 V/S …")}
         <label class="lbl"><span>O2</span>${inp("o2", "NC 2L")}</label>
         <div class="pair"><label class="lbl"><span>식이</span>${inp("diet", "", 'list="dl-diet"')}</label><label class="lbl"><span>활동</span>${inp("act", "", 'list="dl-act"')}</label></div></div></div>
       <div class="sec"><div class="k">라인</div><div class="v">${lines}<button class="addbtn" data-linepick="1">${edLinePick ? "닫기" : "+ 라인·튜브"}</button>${lpick}</div></div>
@@ -681,7 +709,7 @@
       <div class="sec"><div class="k">협진</div><div class="v">${cons}<button class="addbtn" data-add="cons">+ 협진</button></div></div>
       <div class="sec"><div class="k">d/c</div><div class="v"><div class="lbl">
         <span class="seg"><button data-dc="0" class="${dc === 0 ? "on" : ""}">없음</button><button data-dc="1" class="${dc === 1 ? "on" : ""}">예정</button><button data-dc="2" class="${dc === 2 ? "on" : ""}">퇴원</button></span>
-        ${inp("dcd", "m/d", `inputmode="numeric" ${dc ? "" : "disabled"}`)}<span class="calc" id="calc-wd">${wdayOf(o.dcd)}</span></div></div></div>
+        ${inp("dcd", "0901", `inputmode="decimal" ${dc ? "" : "disabled"}`)}<span class="calc" id="calc-wd">${wdayOf(o.dcd)}</span></div></div></div>
       <div class="sec"><div class="k">메모</div><div class="v">${ta("memo", "보호자, 특이사항 …")}</div></div>`;
     document.querySelectorAll("#edCard textarea").forEach(autoGrow);
     renderNav();
@@ -695,7 +723,7 @@
     if (!focusId && a && $("#edCard").contains(a)) try { if (a.selectionStart != null) pos = [a.selectionStart, a.selectionEnd]; } catch(_){}
     renderEd();
     const el = id && document.getElementById(id);
-    if (el){ el.focus(); if (pos) try { el.setSelectionRange(pos[0], pos[1]); } catch(_){} }
+    if (el){ el.focus({ preventScroll:true }); if (pos) try { el.setSelectionRange(pos[0], pos[1]); } catch(_){} }
     refreshOut();
   }
 
@@ -723,7 +751,11 @@
   });
   // IV 삽입일 입력을 마치면(칸 벗어날 때) 3일 이상이면 할 일에 "IV change" 자동 추가
   $("#edCard").addEventListener("change", e => {
-    const t = e.target; if (t.dataset.list !== "lines") return;
+    const t = e.target, o0 = cur();
+    // 칸을 벗어나면 입력칸도 9/1 형태로 정리
+    if (DATE_FIELDS.includes(t.dataset.f) && parseMD(t.value)){ t.value = o0[t.dataset.f] = fmtMD(t.value); refreshOut(); }
+    if (t.dataset.list === "lines" && t.dataset.p === "d" && parseMD(t.value)){ t.value = o0.lines[+t.dataset.j].d = fmtMD(t.value); refreshOut(); }
+    if (t.dataset.list !== "lines") return;
     const o = cur(), l = (o.lines || [])[+t.dataset.j]; if (!l || !isIV(l)) return;
     const d = lineDays(l); if (d === null || d < IV_DUE) return;
     o.todo = o.todo || [];
@@ -744,6 +776,12 @@
         else if (v === "1"){ o.bn = ""; rerenderEd("f-bn"); return; }
         else { o.b = 0; o.bn = ""; }
       } else o[k] = o[k] ? 0 : 1;
+      rerenderEd(); return;
+    }
+    const sxb = t.closest("[data-sx]");
+    if (sxb){
+      const l = sxList(o), x = sxb.dataset.sx;
+      o.sx = SX.filter(y => y === x ? !l.includes(x) : l.includes(y)).join(",");
       rerenderEd(); return;
     }
     const set = t.closest("[data-set]");
@@ -877,7 +915,7 @@
     if (!shown) h += `<div class="tv-empty">${showDone ? "환자 할 일이 없어요." : "남은 환자 할 일이 없어요."}</div>`;
     $("#tvBody").innerHTML = h;
     $("#tvCnt").textContent = `남은 ${left}개`;
-    const el = focusId && document.getElementById(focusId); if (el) el.focus();
+    const el = focusId && document.getElementById(focusId); if (el) el.focus({ preventScroll:true });
     refreshOut();
   }
   $("#tvDone").addEventListener("change", () => renderTv());
@@ -976,7 +1014,7 @@
     if (data.v !== 2) list = list.map(migrate);          // 이전 버전 코드 → 새 형식
     const n = list.filter(filled).length;
     if (!confirm(`지금 화면을 불러온 데이터(${n}명 기재)로 덮어쓸까요?`)) return;
-    count = Math.min(MAX, Math.max(1, data.n || list.length || MAX));
+    count = Math.min(MAX, Math.max(1, data.n || list.length || PER_PAGE));
     P = Array.from({ length:count }, (_, i) => list[i] || {});
     W = Array.isArray(data.w) ? data.w.filter(r => r && typeof r === "object") : [];
     $("#syncpanel").classList.remove("open");
@@ -1032,14 +1070,17 @@
 
   /* ── 폰에서 가로폭 맞추기 (인쇄엔 영향 없음) ── */
   function scaleToFit(){
-    const sheet = $("#sheet");
-    sheet.style.transform = "none"; sheet.style.marginBottom = "";
-    const avail = document.querySelector(".stage").clientWidth - 4, w = sheet.offsetWidth;
-    if (w > avail && avail > 0){
-      const s = avail / w;
-      sheet.style.transform = `scale(${s})`;
-      sheet.style.marginBottom = (sheet.offsetHeight * (s - 1)) + "px";
-    }
+    const sheets = [...document.querySelectorAll(".sheet")];
+    sheets.forEach(sh => { sh.style.transform = "none"; sh.style.marginBottom = ""; });
+    const avail = $("#sheets").clientWidth - 28 - 4;   // stage 좌우 padding 제외
+    sheets.forEach(sh => {
+      const w = sh.offsetWidth;
+      if (w > avail && avail > 0){
+        const sc = avail / w;
+        sh.style.transform = `scale(${sc})`;
+        sh.style.marginBottom = (sh.offsetHeight * (sc - 1)) + "px";
+      }
+    });
   }
   window.addEventListener("resize", () => { if (!pvOn) scaleToFit(); });
 
