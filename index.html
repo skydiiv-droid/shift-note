@@ -227,6 +227,18 @@
   .crow .todoitem{gap:1px}                                   /* 과 ▶ 내용 */
   .crow .todoitem .ttext{display:inline-block; min-width:1.3em}   /* 빈 칸도 클릭되게 */
 
+  /* 협진 줄 오른쪽 끝: 약 A P U (색 = 경로) */
+  .mzone{position:absolute; display:flex; align-items:center; gap:1px; white-space:nowrap}
+  .medl{
+    display:inline-block; font-size:7.5pt; line-height:1.2; padding:0 2px; border-radius:2px;
+    font-weight:700; color:var(--ink); cursor:pointer;
+    user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation;
+  }
+  .medl.m0{color:var(--ph); font-weight:400}
+  .medl.m1{background:#4ade80}    /* 경구 초록 */
+  .medl.m2{background:#60a5fa}    /* 주사 파랑 */
+  .medl.m3{background:#facc15}    /* 기타 노랑 */
+
   /* 왼쪽 아래 V/S (축소) */
   td.todo .vs{position:absolute; left:0; display:flex; align-items:center; overflow:hidden}
 
@@ -288,6 +300,9 @@
   .pv-lab{flex:0 0 3.6em; color:#64748b; font-size:13px; padding-top:2px}
   .pv-val{flex:1; min-width:0; word-break:break-all}
   .pv-chip{display:inline-block; border:1px solid #94a3b8; border-radius:6px; padding:0 6px; margin:0 4px 3px 0; font-size:14px}
+  .pv-chip.m1{background:#4ade80; border-color:#4ade80}
+  .pv-chip.m2{background:#60a5fa; border-color:#60a5fa}
+  .pv-chip.m3{background:#facc15; border-color:#facc15}
   .pv-val ul{margin:0; padding:0; list-style:none}
   .pv-val li{margin:1px 0}
   .pv-val li.done{color:#94a3b8; text-decoration:line-through}
@@ -312,6 +327,7 @@
     textarea.f:focus{background:transparent}
     .ctxmenu{display:none !important}
     .todoadd, .draghandle{display:none !important}
+    .medl.m0{color:transparent !important}
     .todoitem .ttext:focus{background:transparent}
     #rows tr.drop-target td{background:transparent !important}
     /* 형광펜·글씨색이 인쇄에도 그대로 나오게 */
@@ -389,8 +405,17 @@
 
   // 셀 키 목록 (가져오기/내보내기 순서 고정)
   const KEYS = ["io","defe","iv","p","c","lab","ua","ekg","rad","dcd","dc","name","cc","bp","hr","bpr","s","rr","o2l","o2n","b","bn","m",
-                "todo","htodo","htodo2","cons"];
+                "todo","htodo","htodo2","cons","med"];
   const WDAYS = ["일","월","화","수","목","금","토"];
+  // 약: A(antibiotics) P(painkiller) U(URI). 상태 0 끔 / 1 경구 / 2 주사 / 3 기타. 종류마다 최소 1글자
+  const MED_TYPES = ["A","P","U"], MED_ROUTE = ["", "경구", "주사", "기타"];
+  function medHTML(m){
+    m = m || {};
+    return MED_TYPES.map(t => {
+      const st = (Array.isArray(m[t]) && m[t].length) ? m[t] : [0];
+      return st.map(x => `<span class="medl m${(+x >= 0 && +x <= 3) ? +x : 0}" data-t="${t}">${t}</span>`).join("");
+    }).join("");
+  }
 
   /* ── 한 환자 블록 3행 생성 ───────────────────────────── */
   function block(i){
@@ -416,6 +441,7 @@
       +   `<span class="todoadd addH no-print" data-k="htodo2" data-i="${i}" title="가로 할 일 추가(아랫줄)">+</span>`
       +   `<div class="czone"><div class="crow" data-k="cons" data-i="${i}"></div></div>`
       +   `<span class="todoadd addC no-print" data-i="${i}" title="협진 추가">+</span>`
+      +   `<div class="mzone" data-k="med" data-i="${i}" title="약 — 클릭: 경구(초록)→주사(파랑)→기타(노랑)→끔 · 길게 누르기: 글자 추가 · 더블클릭: 삭제(기본 1개는 남음)">${medHTML()}</div>`
       +   `<div class="vs" data-i="${i}" data-k="vs"><span class="vstpl">${vl("SBP")} /${vl("DBP")} -${vl("HR")} -${vl("RR")} -${vl("BT")}<span class="vspo2"> -(${vl("SpO2")})</span></span></div>`
       + `</div>`;
 
@@ -545,6 +571,7 @@
         fitCC(el);
       });
     });
+    document.querySelectorAll(".mzone").forEach(bindMeds);
     bindDrag();
   }
   // C.C. 칸: 줄 수(1~2)만큼 높이, 가로로 넘치거나 이름칸 세로를 넘치면 폰트 축소
@@ -639,6 +666,49 @@
     addTodoItem(vz, { t:"IV change" });
     layoutVert(vz);
     refreshOut();
+  }
+
+  /* ── 약 A P U: 탭=색 순환, 길게=같은 글자 추가, 두 번 탭=삭제(마지막 1개는 끔으로) ── */
+  const medState = el => +((el.className.match(/\bm(\d)\b/) || [0, 0])[1]);
+  function medSet(el, st){ el.classList.remove("m0","m1","m2","m3"); el.classList.add("m" + st); }
+  function medRead(mz){
+    const m = {};
+    MED_TYPES.forEach(t => m[t] = [...mz.querySelectorAll(`.medl[data-t="${t}"]`)].map(medState));
+    return m;
+  }
+  function medChanged(mz){ placeMeds(mz.closest(".todowrap")); refreshOut(); }
+  function bindMeds(mz){
+    let lp = null, longFired = false, downEl = null, sx = 0, sy = 0, last = { el:null, t:0 };
+    const cancel = () => { clearTimeout(lp); lp = null; };
+    mz.addEventListener("pointerdown", e => {
+      downEl = e.target.closest(".medl"); if (!downEl) return;
+      longFired = false; sx = e.clientX; sy = e.clientY; cancel();
+      const el = downEl;
+      lp = setTimeout(() => {                                   // 길게 누르기 → 바로 뒤에 같은 글자(경구) 추가
+        lp = null; longFired = true;
+        const n = el.cloneNode(true); medSet(n, 1); el.after(n);
+        last = { el:null, t:0 };
+        medChanged(mz);
+      }, 500);
+    });
+    mz.addEventListener("pointermove", e => { if (lp && Math.hypot(e.clientX - sx, e.clientY - sy) > 8) cancel(); });
+    mz.addEventListener("pointercancel", cancel);
+    mz.addEventListener("pointerleave", cancel);
+    mz.addEventListener("contextmenu", e => e.preventDefault());   // 폰 길게 누르기 메뉴 방지
+    mz.addEventListener("pointerup", () => {
+      const el = downEl; downEl = null; cancel();
+      if (!el || longFired || !el.isConnected) return;
+      const now = Date.now();
+      if (last.el === el && now - last.t < 350){                // 두 번 탭 → 삭제
+        last = { el:null, t:0 };
+        if (mz.querySelectorAll(`.medl[data-t="${el.dataset.t}"]`).length > 1) el.remove();
+        else medSet(el, 0);                                      // 마지막 하나는 남기고 끔
+      } else {                                                   // 한 번 탭 → 끔→경구→주사→기타→끔
+        last = { el, t:now };
+        medSet(el, (medState(el) + 1) % 4);
+      }
+      medChanged(mz);
+    });
   }
 
   /* ── 환자 순서 변경 (三 핸들 드래그, 터치/마우스 공용) ──── */
@@ -898,12 +968,16 @@
   // 가로 할 일: hrow에 왼→오 흐름(flex-wrap), 세로 넘치면 폰트 축소
   function layoutHorz(hrow){
     if (!hrow) return;
-    const hzone = hrow.parentElement;
     const items = hrow._items || [];
     hrow.innerHTML = "";
     items.forEach(it => { it.querySelectorAll(".ttext").forEach(t => t.style.whiteSpace = "nowrap"); hrow.appendChild(it); });
     let fs = 8; hrow.style.fontSize = fs + "pt"; let guard = 0;
-    while (hrow.scrollHeight > hzone.clientHeight + 1 && fs > 5 && guard++ < 20){ fs -= 0.5; hrow.style.fontSize = fs + "pt"; }
+    while (horzOver(hrow) && fs > 5 && guard++ < 20){ fs -= 0.5; hrow.style.fontSize = fs + "pt"; }
+  }
+  // 가로 줄: 세로로 넘치거나, 한 항목이 너무 길어 가로로 잘리면 true
+  function horzOver(hrow){
+    if (hrow.scrollHeight > hrow.parentElement.clientHeight + 1) return true;
+    return [...hrow.querySelectorAll(".ttext")].some(t => t.scrollWidth > t.clientWidth + 1);
   }
   // 타이핑 중 폰트만 조정(재부착 없음). 세로: 잘리면 축소→줄바꿈
   function fitVertFont(vzone){
@@ -919,9 +993,8 @@
   // 가로(할 일/협진): 세로로 넘치면 폰트만 축소
   function fitHorzFont(hrow){
     if (!hrow) return;
-    const hzone = hrow.parentElement;
     let fs = parseFloat(hrow.style.fontSize) || 8, guard = 0;
-    while (hrow.scrollHeight > hzone.clientHeight + 1 && fs > 5 && guard++ < 12){ fs -= 0.5; hrow.style.fontSize = fs + "pt"; }
+    while (horzOver(hrow) && fs > 5 && guard++ < 12){ fs -= 0.5; hrow.style.fontSize = fs + "pt"; }
   }
   // V/S: (좁아진) 폭에 맞게 폰트 축소
   function fitVS(vs){
@@ -950,6 +1023,16 @@
     addH[0].style.left = "0px"; addH[0].style.top = "1px";
     addH[1].style.left = "0px"; addH[1].style.top = (h1H + 1) + "px";
     const addC = wrap.querySelector(".addC"); addC.style.left = "0px"; addC.style.top = hzH + "px";
+    const mz = wrap.querySelector(".mzone");
+    mz.style.top = hzH + "px"; mz.style.height = consH + "px"; mz.style.right = (W - W2 + 1) + "px";
+    wrap.querySelector(".crow").style.paddingRight = (mz.offsetWidth + 3) + "px";   // 협진은 약 글자 왼쪽까지만
+  }
+  // 약 글자 수가 바뀌면 협진 폭 다시 잡고 재배치
+  function placeMeds(wrap){
+    if (!wrap) return;
+    const mz = wrap.querySelector(".mzone"), crow = wrap.querySelector(".crow");
+    crow.style.paddingRight = (mz.offsetWidth + 3) + "px";
+    layoutHorz(crow);
   }
   function layoutTodo(wrap){
     if (!wrap) return;
@@ -970,6 +1053,10 @@
         const el = document.querySelector(`[data-i="${i}"][data-k="${k}"]`);
         if (!el) return;
         if (el.dataset.k === "dc") { const st = dcState(el); if (st) o[k] = st; }   // d/c: 0/1/2 상태
+        else if (el.classList.contains("mzone")) {                                    // 약: 기본(전부 1글자·끔)이면 생략
+          const m = medRead(el);
+          if (MED_TYPES.some(t => m[t].length > 1 || m[t][0])) o[k] = m;
+        }
         else if (el.classList.contains("tg")) { if (!el.classList.contains("off")) o[k] = 1; }
         else if (el.classList.contains("vzone") || el.classList.contains("hrow") || el.classList.contains("crow")) {  // 세로/가로 할 일/협진
           const arrow = el.classList.contains("crow");
@@ -1001,6 +1088,7 @@
         const el = document.querySelector(`[data-i="${i}"][data-k="${k}"]`);
         if (!el) return;
         if (el.dataset.k === "dc") applyDcState(el, +o[k] || 0);   // d/c 상태 복원
+        else if (el.classList.contains("mzone")) { el.innerHTML = medHTML(o[k]); placeMeds(el.closest(".todowrap")); }
         else if (el.classList.contains("tg")) setTg(el, !!o[k]);
         else if (el.classList.contains("vzone") || el.classList.contains("hrow") || el.classList.contains("crow")) {
           const horizontal = !el.classList.contains("vzone");
@@ -1216,6 +1304,8 @@
     return `<div class="pv-head"><span class="pv-no">${i + 1}번</span>`
       + `<span class="pv-name${o.dc === 2 ? " struck" : ""}">${esc(o.name) || "(이름 없음)"}</span>${dc}</div>`
       + (o.cc ? `<div class="pv-cc">${esc(o.cc).replace(/\n/g, "<br>")}</div>` : "")
+      + sec("약", o.med ? MED_TYPES.map(t => (o.med[t] || []).filter(x => +x > 0 && +x <= 3)
+          .map(x => `<span class="pv-chip m${+x}">${t} ${MED_ROUTE[+x]}</span>`).join("")).join("") : "")
       + sec("V/S", chips([["bp","BP"],["hr","HR"],["bpr","T"],["s","S"],["rr","RR"]]) + o2)
       + sec("I/O", chips([["io","I/O"],["defe","defe"]]))
       + sec("IV", iv)
