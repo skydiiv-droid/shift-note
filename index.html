@@ -133,9 +133,42 @@
   .pvtoggle button:hover{background:#475569}
   .ed{display:none; max-width:620px; margin:0 auto; padding:12px 12px 0}
   body.pv .ed{display:block}
-  body.pv .pvtoggle.sheetonly{display:none}
+  body.pv .pvtoggle.sheetonly, body.tv .pvtoggle.sheetonly{display:none}
+  .pvtoggle{gap:8px; flex-wrap:wrap}
+  .pvtoggle button.sub{background:#e2e8f0; color:#0f172a}
+  .pvtoggle button.sub:hover{background:#cbd5e1}
   /* 전체 인계장은 지우지 않고 화면 밖으로만 → 크기 측정이 계속 정상 */
-  body.pv .stage{position:absolute; left:-10000px; top:0; visibility:hidden}
+  body.pv .stage, body.tv .stage{position:absolute; left:-10000px; top:0; visibility:hidden}
+
+  /* 할 일 모아보기 (모든 환자 + 병동 공통) */
+  .tvw{display:none; max-width:620px; margin:0 auto; padding:12px 12px 0}
+  body.tv .tvw{display:block}
+  .tv-head{display:flex; align-items:baseline; gap:10px; margin:2px 2px 10px}
+  .tv-head h2{font-size:18px; margin:0}
+  .tv-head .cnt2{color:#64748b; font-size:13px}
+  .tv-head label{margin-left:auto; font-size:13px; color:#475569; display:flex; align-items:center; gap:4px; cursor:pointer}
+  .tv-grp{background:#fff; border-radius:12px; box-shadow:0 2px 10px rgba(15,23,42,.10); padding:8px 12px 10px; margin-bottom:10px; font-size:15px}
+  .tv-grp.ward{border:2px solid #334155}
+  .tv-pt{display:flex; align-items:baseline; gap:6px; padding:2px 0 6px; border-bottom:1px solid #e2e8f0; margin-bottom:4px; cursor:pointer}
+  .tv-pt .bed{font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; color:#475569}
+  .tv-pt b{font-size:16px}
+  .tv-pt b.struck{text-decoration:line-through}
+  .tv-pt .go{margin-left:auto; color:#0369a1; font-size:12px}
+  .tv-it{display:grid; grid-template-columns:1.6em minmax(0,1fr) auto; gap:6px; align-items:center; padding:3px 0}
+  .tv-it .tx{min-width:0; word-break:break-all}
+  .tv-it.done .tx{color:#94a3b8; text-decoration:line-through}
+  .tv-it .cb{border:1.5px solid #64748b; border-radius:4px; width:1.3em; height:1.3em; background:#fff; cursor:pointer; padding:0; font-size:13px; line-height:1; color:transparent}
+  .tv-it .cb.on{background:#0f172a; border-color:#0f172a; color:#fff}
+  .tv-grp.ward .tv-it{grid-template-columns:1.6em minmax(0,1fr) 1.4em}
+  .tv-grp.ward input{font:inherit; font-size:15px; border:0; border-bottom:1px solid #e2e8f0; padding:3px 2px; width:100%; min-width:0; outline:0; background:transparent}
+  .tv-grp.ward input:focus{border-bottom-color:#0ea5e9; background:#f0f9ff}
+  .tv-grp.ward .done input{color:#94a3b8; text-decoration:line-through}
+  .tv-empty{color:#64748b; text-align:center; padding:24px 0; font-size:14px}
+
+  /* 전체탭 맨 위 병동 공통 줄 (공통 할 일 있을 때만) */
+  #rows tr.wrow td{vertical-align:middle}
+  .wbox{display:flex; flex-wrap:wrap; align-content:center; gap:0 8px; padding:1px 4px; height:100%; font-size:8pt; line-height:1.3; overflow:hidden}
+  .wbox .wl{font-weight:700}
 
   .ed-nav{display:flex; gap:6px; overflow-x:auto; padding:0 0 10px; -webkit-overflow-scrolling:touch}
   .ed-nav button{flex:0 0 auto; font:inherit; font-size:14px; border:1px solid #cbd5e1; background:#fff; color:#0f172a; border-radius:999px; padding:6px 12px; cursor:pointer; white-space:nowrap}
@@ -223,7 +256,8 @@
   @media print{
     body{background:#fff}
     .bar,.sync,.hint,.ed,.pvtoggle{display:none !important}
-    body.pv .stage{position:static; visibility:visible}
+    body.pv .stage, body.tv .stage{position:static; visibility:visible}
+    .tvw{display:none !important}
     .stage{padding:0; display:block}
     .sheet{width:17cm; box-shadow:none; transform:none !important; margin-bottom:0 !important}
     .draghandle,.ph{display:none !important}
@@ -274,14 +308,20 @@
   </div>
 </div>
 
-<div class="pvtoggle sheetonly"><button id="pvOpen">개별 인계장</button></div>
+<div class="pvtoggle sheetonly"><button id="pvOpen">개별 인계장</button><button class="sub" id="tvOpen1">할 일 모아보기</button></div>
 
 <div class="ed" id="ed">
   <div class="ed-nav" id="edNav"></div>
   <div class="card" id="edCard"></div>
   <div class="ed-move"><button id="edPrev">◀ 이전</button><button id="edNext">다음 ▶</button></div>
   <div class="ed-tools"><button id="edUp">순서 위로</button><button id="edDown">순서 아래로</button><button id="edDel" class="del">이 환자 삭제</button></div>
-  <div class="pvtoggle"><button id="pvClose">전체 인계장으로</button></div>
+  <div class="pvtoggle"><button class="sub" id="tvOpen2">할 일 모아보기</button><button id="pvClose">전체 인계장으로</button></div>
+</div>
+
+<div class="tvw" id="tv">
+  <div class="tv-head"><h2>할 일 모아보기</h2><span class="cnt2" id="tvCnt"></span><label><input type="checkbox" id="tvDone"> 완료도 보기</label></div>
+  <div id="tvBody"></div>
+  <div class="pvtoggle"><button class="sub" id="tvToEd">개별 인계장</button><button id="tvClose">전체 인계장으로</button></div>
 </div>
 
 <datalist id="dl-diet"><option>NPO</option><option>SOW</option><option>RD</option><option>LD</option><option>DM식</option><option>저염식</option><option>TF</option></datalist>
@@ -294,7 +334,6 @@
 
   const MAX = 13;
   const USABLE_CM = 29.7 - 1.401*2;   // 26.898cm
-  const MIN_BLK_CM = 0.681*3;         // 원본 3행 블록 높이
   const MAX_BLK_CM = 0.95*3;
   const PX_CM = 96/2.54;
   const WDAYS = ["일","월","화","수","목","금","토"];
@@ -310,6 +349,7 @@
   /* ── 데이터: 환자 배열이 단일 진실원. 두 화면은 여기서 그리기만 ── */
   let count = MAX;
   let P = Array.from({ length:count }, () => ({}));
+  let W = [];   // 병동 공통 할 일 [{t, c}] — 환자와 무관한 업무
   let edIdx = 0, pvOn = false, edLinePick = false;
 
   const esc = v => String(v == null ? "" : v).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -330,6 +370,8 @@
     return r;
   }
   const filled = o => Object.keys(clean(o)).length > 0;
+  const wardItems = () => W.filter(r => str(r.t));
+  const anyData = () => P.some(filled) || wardItems().length > 0;
 
   /* ── 날짜 ── */
   const parseMD = v => { const m = (v || "").match(/^\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*$/); return m ? [+m[1], +m[2]] : null; };
@@ -488,12 +530,19 @@
     while (over() && fs > min && g++ < 20){ fs -= 0.5; el.style.fontSize = fs + "pt"; }
   }
   function renderSheet(){
-    $("#rows").innerHTML = P.map(blockHTML).join("");
+    const wi = wardItems();
+    const wrow = wi.length ? `<tr class="wrow"><td colspan="3"><div class="wbox"><span class="wl">병동 공통</span>${wi.map(r =>
+      `<span class="ti${r.c ? " done" : ""}">${esc(r.t)}<span class="ck">${r.c ? "(+)" : "(\u00a0\u00a0\u00a0)"}</span></span>`).join("")}</div></td></tr>` : "";
+    $("#rows").innerHTML = wrow + P.map(blockHTML).join("");
     // 인원 수에 맞춰 블록 높이를 늘려 한 페이지를 꽉 채움 (정수 px: 반올림 누적으로 페이지 넘김 방지)
+    // 공통 줄이 있으면 그만큼 환자 칸을 줄여서 A4 1장 유지
     const usablePx = Math.floor(USABLE_CM * PX_CM) - 2;
-    const per = Math.max(Math.ceil(MIN_BLK_CM * PX_CM), Math.min(Math.floor(MAX_BLK_CM * PX_CM), Math.floor(usablePx / count)));
-    document.querySelectorAll("#rows tr").forEach(tr => tr.style.height = per + "px");
-    document.querySelectorAll("#rows td > div").forEach(d => d.style.height = (per - 1) + "px");
+    const wH = wi.length ? Math.round(0.75 * PX_CM) : 0;
+    const per = Math.min(Math.floor(MAX_BLK_CM * PX_CM), Math.floor((usablePx - wH) / count));
+    document.querySelectorAll("#rows tr[data-i]").forEach(tr => tr.style.height = per + "px");
+    document.querySelectorAll("#rows tr[data-i] td > div").forEach(d => d.style.height = (per - 1) + "px");
+    const wr = $("#rows tr.wrow");
+    if (wr){ wr.style.height = wH + "px"; wr.querySelector(".wbox").style.height = (wH - 1) + "px"; fitHeight(wr.querySelector(".wbox"), 8, 5); }
     document.querySelectorAll("#rows .nm-name").forEach(el => fitWidth(el, 10.5, 6));
     document.querySelectorAll("#rows .nm-top").forEach(el => fitWidth(el, 7, 5));
     document.querySelectorAll("#rows .nm-sub").forEach(el => fitWidth(el, 7, 5));
@@ -504,16 +553,18 @@
     $("#cntLabel").textContent = count + "명";
     scaleToFit();
     refreshOut();
+    if (tvOn) renderTv();
   }
 
   /* ── 전체 인계장: 칸 누르면 개별 인계장 / ≡ 드래그로 순서 변경 ── */
   $("#rows").addEventListener("click", e => {
     if (e.target.closest(".draghandle")) return;
+    if (e.target.closest("tr.wrow")){ openTv(); return; }
     const tr = e.target.closest("tr[data-i]"); if (tr) openEd(+tr.dataset.i);
   });
   let dragSrc = null;
   function blockIndexAtY(y){
-    const rows = [...document.querySelectorAll("#rows tr")];
+    const rows = [...document.querySelectorAll("#rows tr[data-i]")];
     for (const tr of rows){
       const r = tr.getBoundingClientRect();
       if (y < r.bottom) return { i:+tr.dataset.i, before: y < (r.top + r.bottom) / 2 };
@@ -782,14 +833,83 @@
   }
   function openEd(i){
     edIdx = Math.max(0, Math.min(count - 1, i));
+    tvOn = false; document.body.classList.remove("tv");
     pvOn = true; document.body.classList.add("pv");
     renderEd(); window.scrollTo(0, 0);
     if (!filled(cur())) $("#f-name").focus();   // 빈 칸을 눌렀으면 바로 이름 입력
   }
   function closeEd(){
-    pvOn = false; document.body.classList.remove("pv");
+    pvOn = false; tvOn = false; document.body.classList.remove("pv", "tv");
     renderSheet(); window.scrollTo(0, 0);
   }
+
+  /* ════════════ 할 일 모아보기: 모든 환자의 할 일 + 병동 공통 ════════════ */
+  let tvOn = false;
+  function openTv(){
+    pvOn = false; document.body.classList.remove("pv");
+    tvOn = true; document.body.classList.add("tv");
+    renderTv(); window.scrollTo(0, 0);
+  }
+  function renderTv(focusId){
+    if (!tvOn) return;
+    const showDone = $("#tvDone").checked;
+    let left = 0;
+    const cb = (on, attrs) => `<button class="cb${on ? " on" : ""}" ${attrs} title="완료">✓</button>`;
+    // 병동 공통: 여기서 바로 입력·수정
+    const ward = W.map((r, j) => ({ r, j })).filter(x => showDone || !x.r.c || !str(x.r.t));
+    W.forEach(r => { if (str(r.t) && !r.c) left++; });
+    let h = `<div class="tv-grp ward"><div class="tv-pt" style="cursor:default"><b>병동 공통</b></div>`
+      + ward.map(({ r, j }) => `<div class="tv-it${r.c ? " done" : ""}">${cb(r.c, `data-wchk="${j}"`)}
+          <input id="w-${j}" data-w="${j}" value="${esc(r.t)}" placeholder="공통 할 일 (Enter: 다음 줄)" autocomplete="off" enterkeyhint="next">
+          <button class="x" data-wdel="${j}" title="삭제">×</button></div>`).join("")
+      + `<button class="addbtn" data-wadd="1" style="margin-top:4px">+ 공통 할 일</button></div>`;
+    // 환자별 (전체탭 순서 그대로)
+    let shown = 0;
+    P.forEach((o, i) => {
+      const items = (o.todo || []).map((r, j) => ({ r, j })).filter(x => str(x.r.t) && (showDone || !x.r.c));
+      (o.todo || []).forEach(r => { if (str(r.t) && !r.c) left++; });
+      if (!items.length) return;
+      shown++;
+      h += `<div class="tv-grp"><div class="tv-pt" data-open="${i}"><span class="bed">${esc(o.bed || "")}</span><b class="${+o.dc === 2 ? "struck" : ""}">${esc(o.name) || (i + 1) + "번"}</b><span class="go">개별탭 ›</span></div>`
+        + items.map(({ r, j }) => `<div class="tv-it${r.c ? " done" : ""}">${cb(r.c, `data-pchk="${i}:${j}"`)}<span class="tx">${esc(r.t)}</span><span></span></div>`).join("")
+        + `</div>`;
+    });
+    if (!shown) h += `<div class="tv-empty">${showDone ? "환자 할 일이 없어요." : "남은 환자 할 일이 없어요."}</div>`;
+    $("#tvBody").innerHTML = h;
+    $("#tvCnt").textContent = `남은 ${left}개`;
+    const el = focusId && document.getElementById(focusId); if (el) el.focus();
+    refreshOut();
+  }
+  $("#tvDone").addEventListener("change", () => renderTv());
+  $("#tvBody").addEventListener("input", e => {
+    const t = e.target; if (t.dataset.w == null) return;
+    W[+t.dataset.w].t = t.value; refreshOut();
+  });
+  $("#tvBody").addEventListener("keydown", e => {
+    const t = e.target; if (t.dataset.w == null || e.isComposing || e.keyCode === 229) return;
+    const j = +t.dataset.w;
+    if (e.key === "Enter"){ e.preventDefault(); W.splice(j + 1, 0, {}); renderTv(`w-${j + 1}`); }
+    else if (e.key === "Backspace" && !t.value){ e.preventDefault(); W.splice(j, 1); renderTv(j > 0 ? `w-${j - 1}` : null); }
+  });
+  $("#tvBody").addEventListener("click", e => {
+    const t = e.target;
+    const op = t.closest("[data-open]"); if (op){ openEd(+op.dataset.open); return; }
+    const wc = t.closest("[data-wchk]"); if (wc){ const r = W[+wc.dataset.wchk]; r.c = r.c ? 0 : 1; renderTv(); return; }
+    const pc = t.closest("[data-pchk]");
+    if (pc){ const [i, j] = pc.dataset.pchk.split(":").map(Number); const r = P[i].todo[j]; r.c = r.c ? 0 : 1; renderTv(); return; }
+    const wd = t.closest("[data-wdel]"); if (wd){ W.splice(+wd.dataset.wdel, 1); renderTv(); return; }
+    if (t.closest("[data-wadd]")){ W.push({}); renderTv(`w-${W.length - 1}`); return; }
+  });
+  // 빈 공통 할 일 칸은 나갈 때 정리
+  $("#tvBody").addEventListener("focusout", e => {
+    if (e.target.dataset.w == null) return;
+    setTimeout(() => { const a = document.activeElement;
+      if (a && a.dataset && a.dataset.w != null) return;
+      const before = W.length; W = W.filter(r => str(r.t)); if (W.length !== before && tvOn) renderTv(); }, 0);
+  });
+  ["#tvOpen1", "#tvOpen2"].forEach(id => $(id).addEventListener("click", openTv));
+  $("#tvClose").addEventListener("click", closeEd);
+  $("#tvToEd").addEventListener("click", () => { const f = P.findIndex(filled); openEd(f >= 0 ? f : 0); });
   $("#pvOpen").addEventListener("click", () => { const f = P.findIndex(filled); openEd(f >= 0 ? f : 0); });
   $("#pvClose").addEventListener("click", closeEd);
   $("#edPrev").addEventListener("click", () => edStep(-1));
@@ -842,7 +962,7 @@
     if (!code.startsWith("HND1:")) return code;          // 평문 JSON도 하위호환
     return new TextDecoder().decode(xorBytes(Uint8Array.from(atob(code.slice(5)), c => c.charCodeAt(0))));
   }
-  const exportStr = () => JSON.stringify({ v:2, n:count, p:P.map(clean) });
+  const exportStr = () => JSON.stringify(Object.assign({ v:2, n:count, p:P.map(clean) }, wardItems().length ? { w:clean({ w:W }).w } : {}));
   function refreshOut(){ if ($("#syncpanel").classList.contains("open")) $("#sync-out").value = encode(exportStr()); }
   function flash(btn, text){ const o = btn.textContent; btn.textContent = text; setTimeout(() => btn.textContent = o, 1200); }
   function applyStr(raw){
@@ -858,8 +978,10 @@
     if (!confirm(`지금 화면을 불러온 데이터(${n}명 기재)로 덮어쓸까요?`)) return;
     count = Math.min(MAX, Math.max(1, data.n || list.length || MAX));
     P = Array.from({ length:count }, (_, i) => list[i] || {});
+    W = Array.isArray(data.w) ? data.w.filter(r => r && typeof r === "object") : [];
     $("#syncpanel").classList.remove("open");
     if (pvOn){ const f = P.findIndex(filled); edIdx = f >= 0 ? f : 0; renderEd(); }
+    renderTv();
     renderSheet();
     alert("적용됐어요.");
   }
@@ -876,8 +998,9 @@
   $("#printBtn").addEventListener("click", () => { renderSheet(); window.print(); });
   window.addEventListener("beforeprint", renderSheet);
   $("#clearBtn").addEventListener("click", () => {
-    if (P.some(filled) && !confirm("전체 내용을 지울까요? 되돌릴 수 없어요.")) return;
-    P = Array.from({ length:count }, () => ({})); edIdx = 0;
+    if (anyData() && !confirm("전체 내용을 지울까요? 되돌릴 수 없어요.")) return;
+    P = Array.from({ length:count }, () => ({})); W = []; edIdx = 0;
+    renderTv();
     renderSheet(); if (pvOn) renderEd();
   });
   $("#syncBtn").addEventListener("click", () => {
@@ -921,7 +1044,7 @@
   window.addEventListener("resize", () => { if (!pvOn) scaleToFit(); });
 
   /* ── 실수로 닫기 방지 (저장은 안 함) ── */
-  window.addEventListener("beforeunload", e => { if (P.some(filled)){ e.preventDefault(); e.returnValue = ""; } });
+  window.addEventListener("beforeunload", e => { if (anyData()){ e.preventDefault(); e.returnValue = ""; } });
 
   renderSheet();
 
