@@ -337,11 +337,15 @@
   // 체크 토글 (이전 버전과 같은 키): 켜진 것만 전체 인계장에 찍힘. null = 구분 간격
   const TOGGLES = [["io","I/O"],["defe","defe"],null,["bp","BP"],["hr","HR"],["bpr","T"],["s","S"],["rr","RR"],null,
                    ["lab","L"],["ua","U"],["ekg","E"],["rad","R"],null,["b","B*"],["m","m"]];
-  const SX = ["통증","발열","기침·가래","호흡곤란","오심·구토","어지럼","복통","설사","변비","부종","불면","배뇨곤란"];
-  const sxList = o => str(o.sx) ? str(o.sx).split(",").filter(Boolean) : [];
-  // 전체탭 한 줄: c/o 통증(Rt knee) NRS 5, 기침·가래, 직접 쓴 호소
+  // 발열은 V/S(BT)로 보므로 제외. Pain은 부위·NRS 따로
+  const SX = ["Pain","URI","dyspnea","N/V","dizziness","H/A","diarrhea","constipation","edema","insomnia","dysuria","G/W"];
+  // 이전 한글 버튼 값 → 의학용어 (발열은 버림)
+  const SX_OLD = { "통증":"Pain", "복통":"Pain", "기침·가래":"URI", "호흡곤란":"dyspnea", "오심·구토":"N/V", "어지럼":"dizziness",
+                   "설사":"diarrhea", "변비":"constipation", "부종":"edema", "불면":"insomnia", "배뇨곤란":"dysuria" };
+  const sxList = o => [...new Set((str(o.sx) ? str(o.sx).split(",") : []).map(x => SX_OLD[x] || x).filter(x => SX.includes(x)))];
+  // 전체탭 한 줄: c/o Pain(Rt knee) NRS 5, URI, 직접 쓴 호소
   function sxSummary(o){
-    const a = sxList(o).map(x => x === "통증" ? "통증" + (str(o.psite) ? `(${str(o.psite)})` : "") + (str(o.nrs) ? " NRS " + str(o.nrs) : "") : x);
+    const a = sxList(o).map(x => x === "Pain" ? "Pain" + (str(o.psite) ? `(${str(o.psite)})` : "") + (str(o.nrs) ? " NRS " + str(o.nrs) : "") : x);
     if (str(o.sxt)) a.push(str(o.sxt).replace(/\n/g, " / "));
     return a.join(", ");
   }
@@ -691,7 +695,7 @@
         ${inp("opname", "수술명")}</div></div>
       <div class="sec"><div class="k">증상</div><div class="v">
         <div class="chips">${SX.map(x => `<span class="chip${sxList(o).includes(x) ? " on" : ""}" data-sx="${x}">${x}</span>`).join("")}</div>
-        ${sxList(o).includes("통증") ? `<div class="pair"><label class="lbl"><span>통증 부위</span>${inp("psite", "")}</label><label class="lbl"><span>NRS</span>${inp("nrs", "0-10", 'inputmode="numeric"')}</label></div>` : ""}
+        ${sxList(o).includes("Pain") ? `<div class="pair"><label class="lbl"><span>Pain 부위</span>${inp("psite", "")}</label><label class="lbl"><span>NRS</span>${inp("nrs", "0-10", 'inputmode="numeric"')}</label></div>` : ""}
         ${ta("sxt", "호소 직접 입력 (언제부터, 양상 …)")}</div></div>
       <div class="sec"><div class="k">위험</div><div class="v">
         <div class="pair stack"><label class="lbl"><span>알러지</span>${inp("allergy", "없으면 비움")}</label><label class="lbl"><span>격리</span>${inp("iso", "VRE, CRE …")}</label></div>
