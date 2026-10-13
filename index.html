@@ -115,6 +115,9 @@
   .vstpl{white-space:nowrap; color:var(--ink); margin-left:auto}
   .vsl{display:inline-block; min-width:0.55cm; text-align:center}
   .vsl i{font-style:normal; font-size:5.5pt; color:#c3ccd8}
+  .vsl.hl{background:#fde047; border-radius:1px}        /* 개별탭에서 체크한 V/S = 형광펜 */
+  .vsl.hl i{color:#a16207}
+  .vsq{color:#dc2626; font-weight:700; margin-right:3px}  /* q8hr 아닐 때만 */
 
   /* 할 일 칸: 가로 흐름, 남는 아래 공간은 근무 중 손글씨 */
   .todobox{display:flex; flex-wrap:wrap; align-content:flex-start; gap:0 6px; padding:1px 3px; height:100%; font-size:8pt; line-height:1.3; overflow:hidden}
@@ -168,6 +171,8 @@
   .chip{font:inherit; font-size:13px; border:1px solid #cbd5e1; background:#fff; color:#94a3b8; border-radius:6px; padding:3px 9px; cursor:pointer; user-select:none}
   .chip.on{border-color:#0f172a; color:#0f172a; font-weight:700}
   .chip.on.hi{background:#0f172a; color:#fff}
+  .chip.q{color:#0f172a; border-color:#0f172a}
+  .chip.q.alt{background:#dc2626; border-color:#dc2626; color:#fff; font-weight:700}
   .gap{width:8px}
   .li{display:grid; gap:6px; align-items:center}
   .li.line{grid-template-columns:minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,1fr) 2.6em 1.4em}
@@ -282,6 +287,9 @@
   const TOGGLES = [["io","I/O"],["defe","defe"],null,["bp","BP"],["hr","HR"],["bpr","T"],["s","S"],["rr","RR"],null,
                    ["p","P"],["c","C"],null,["lab","L"],["ua","U"],["ekg","E"],["rad","R"],null,["b","B*"],["m","m"]];
   const IV_DUE = 3;   // IV 경과일 경고 기준(일)
+  // V/S 칸에 형광펜으로 표시되는 토글 (전체탭 글씨에서는 빠짐). B* = BST → V/S 끝 [BST]
+  const VS_KEYS = ["bp","hr","bpr","s","rr","b"];
+  const VSQ = [8, 4, 2, 1];   // V/S 측정 간격(hr). 기본 q8hr, 아닌 것만 전체탭에 빨갛게
 
   /* ── 데이터: 환자 배열이 단일 진실원. 두 화면은 여기서 그리기만 ── */
   let count = MAX;
@@ -369,8 +377,11 @@
 
   /* ════════════ 전체 인계장 (A4) ════════════ */
   function vsTpl(o){
-    const vl = l => `<span class="vsl"><i>${l}</i></span>`;
-    return `<span class="vstpl">${vl("SBP")}/${vl("DBP")}-${vl("HR")}-${vl("RR")}-${vl("BT")}${o.s ? `-(${vl("SpO2")})` : ""}</span>`;
+    const vl = (l, k) => `<span class="vsl${o[k] ? " hl" : ""}"><i>${l}</i></span>`;
+    const q = +o.vsq && +o.vsq !== 8 ? `<span class="vsq">q${+o.vsq}hr</span>` : "";
+    return `<span class="vstpl">${q}${vl("SBP","bp")}/${vl("DBP","bp")}-${vl("HR","hr")}-${vl("RR","rr")}-${vl("BT","bpr")}`
+      + (o.s ? `-(${vl("SpO2","s")})` : "")
+      + (o.b ? ` [${vl("BST" + (str(o.bn) ? " " + esc(str(o.bn)) : ""), "b")}]` : "") + `</span>`;
   }
   function tagsHTML(o){
     const t = (s, hi) => `<span class="t${hi ? " hi" : ""}">${esc(s)}</span>`;
@@ -389,7 +400,7 @@
     if (o.med) MED_TYPES.forEach(ty => (o.med[ty] || []).forEach(s => { if (+s > 0 && +s <= 3) h += `<span class="medc m${+s}">${ty}</span>`; }));
     return h;
   }
-  const togglesText = o => TOGGLES.filter(Boolean).filter(([k]) => o[k]).map(([k, l]) => k === "b" && str(o.bn) ? l + str(o.bn) : l).join(" ");
+  const togglesText = o => TOGGLES.filter(Boolean).filter(([k]) => o[k] && !VS_KEYS.includes(k)).map(([, l]) => l).join(" ");
   function blockHTML(o, i){
     const dc = +o.dc || 0;
     const dcTxt = dc ? `<span class="dc${dc === 2 ? " big" : ""}">${esc(o.dcd || "")}${wdayOf(o.dcd)} <b>d/c</b></span>` : "";
@@ -529,7 +540,10 @@
         <span>▶</span>
         <input id="c-${j}-r" data-list="cons" data-j="${j}" data-p="r" value="${esc(r.r)}" placeholder="내용" autocomplete="off">
         <button class="x" data-del="cons" data-j="${j}" title="삭제">×</button></div>`).join("");
+    const q = +o.vsq || 8;
+    const qChip = `<span class="chip q${q !== 8 ? " alt" : ""}" data-vsq="1" title="V/S 간격 — 누를 때마다 q8→q4→q2→q1">q${q}hr</span>`;
     const tg = TOGGLES.map(x => !x ? `<span class="gap"></span>`
+      : x[0] === "bp" ? qChip + chip("bp", "BP")
       : x[0] === "b" ? `${chip("b", "B*")}<input id="f-bn" data-f="bn" class="bn" value="${esc(o.bn)}" inputmode="numeric" autocomplete="off">`
       : chip(x[0], x[1])).join("");
     $("#edCard").innerHTML = `
@@ -642,6 +656,10 @@
     }
     const del = t.closest("[data-del]");
     if (del){ (o[del.dataset.del] || []).splice(+del.dataset.j, 1); rerenderEd(); return; }
+    if (t.closest("[data-vsq]")){
+      const q = VSQ[(VSQ.indexOf(+o.vsq || 8) + 1) % VSQ.length];
+      o.vsq = q === 8 ? 0 : q; rerenderEd(); return;
+    }
     const chk = t.closest("[data-chk]");
     if (chk){ const r = o.todo[+chk.dataset.chk]; r.c = r.c ? 0 : 1; rerenderEd(); return; }
   });
@@ -695,6 +713,7 @@
     edIdx = Math.max(0, Math.min(count - 1, i));
     pvOn = true; document.body.classList.add("pv");
     renderEd(); window.scrollTo(0, 0);
+    if (!filled(cur())) $("#f-name").focus();   // 빈 칸을 눌렀으면 바로 이름 입력
   }
   function closeEd(){
     pvOn = false; document.body.classList.remove("pv");
