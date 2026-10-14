@@ -121,11 +121,20 @@
   .m1{background:var(--po)} .m2{background:var(--inj)} .m3{background:var(--etc)}
   .tgs{font-weight:600}
   .vstpl{white-space:nowrap; color:var(--ink); margin-left:auto}
-  .vsl{display:inline-block; min-width:0.55cm; text-align:center}
+  .vsl{display:inline-block; min-width:1.9em; text-align:center}   /* em: 글씨 줄이면 칸도 같이 줄어 넘치지 않게 */
   .vsl i{font-style:normal; font-size:5.5pt; color:#c3ccd8}
   .vsl.hl{background:#fde047; border-radius:1px}        /* 개별탭에서 체크한 V/S = 형광펜 */
   .vsl.hl i{color:#a16207}
   .vsq{color:#dc2626; font-weight:700; margin-right:3px}  /* q8hr 아닐 때만 */
+  /* 전체탭에서 바로 누르는 토글: 꺼진 건 화면에만 흐리게, 인쇄 땐 안 보임 */
+  .qt{cursor:pointer; border-radius:2px}
+  .qt.xoff{color:#d5dce5; font-weight:400}
+  .qt.xoff i{color:#d5dce5}
+  .tgs .qt{margin-right:3px}
+  .tgs .sep{display:inline-block; width:5px}
+  @media screen{ .qt:hover{outline:1px solid #0ea5e9} }
+  .vsq.xoff{color:#d5dce5; font-weight:400}
+  #sheets tr.qcur td{background:#f0f9ff}
 
   /* 할 일 칸: 가로 흐름, 남는 아래 공간은 근무 중 손글씨 */
   .todobox{display:flex; flex-wrap:wrap; align-content:flex-start; gap:0 6px; padding:1px 3px; height:100%; font-size:8pt; line-height:1.3; overflow:hidden}
@@ -171,6 +180,21 @@
   .tv-grp.ward input:focus{border-bottom-color:#0ea5e9; background:#f0f9ff}
   .tv-grp.ward .done input{color:#94a3b8; text-decoration:line-through}
   .tv-empty{color:#64748b; text-align:center; padding:24px 0; font-size:14px}
+
+  /* 전체탭 빠른 입력창 (할 일 칸 누르면) */
+  .qp{position:fixed; left:50%; transform:translateX(-50%); bottom:0; z-index:40; width:min(620px, 100%);
+    background:#fff; border-radius:14px 14px 0 0; box-shadow:0 -6px 24px rgba(15,23,42,.25); padding:10px 14px 14px; font-size:15px}
+  .qp-head{display:flex; align-items:center; gap:6px; margin-bottom:6px}
+  .qp-head b{font-size:17px}
+  .qp-bed{font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; color:#475569}
+  .qp-head .sp{flex:1}
+  .qp-head button{font:inherit; font-size:13px; border:1px solid #cbd5e1; background:#fff; border-radius:8px; padding:5px 10px; cursor:pointer}
+  .qp-l{display:block; font-size:12px; color:#64748b; margin:6px 0 2px}
+  .qp textarea, .qp input{font:inherit; font-size:15px; width:100%; border:0; border-bottom:1px solid #e2e8f0; padding:4px 2px; outline:0; background:transparent; resize:none}
+  .qp textarea:focus, .qp input:focus{border-bottom-color:#0ea5e9; background:#f0f9ff}
+  .qp .li.todo{grid-template-columns:1.6em minmax(0,1fr) 1.4em}
+  body.qpopen{padding-bottom:280px}
+  @media print{ .qp{display:none !important} body.qpopen{padding-bottom:0} }
 
   /* 전체탭 맨 위 병동 공통 줄 (공통 할 일 있을 때만) */
   #sheets tr.wrow td{vertical-align:middle}
@@ -270,6 +294,8 @@
     .sheet{width:17cm; box-shadow:none; transform:none !important; margin-bottom:0 !important; break-after:page; page-break-after:always}
     .sheet:last-child{break-after:auto; page-break-after:auto}
     .draghandle,.ph{display:none !important}
+    .qt.xoff, .qt.xoff i{visibility:hidden}
+    #sheets tr.qcur td{background:transparent !important}
     #sheets tr td{background:transparent !important}
     .sheet, .sheet *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     html,body{width:17cm}
@@ -319,6 +345,16 @@
   <div class="ed-move"><button id="edPrev">◀ 이전</button><button id="edNext">다음 ▶</button></div>
   <div class="ed-tools"><button id="edUp">순서 위로</button><button id="edDown">순서 아래로</button><button id="edDel" class="del">이 환자 삭제</button></div>
   <div class="pvtoggle"><button class="sub" id="tvOpen2">할 일 모아보기</button><button id="pvClose">전체 인계장으로</button></div>
+</div>
+
+<div class="qp" id="qp" hidden>
+  <div class="qp-head"><span class="qp-bed" id="qpBed"></span><b id="qpName"></b><span class="sp"></span>
+    <button id="qpPrev" title="이전 환자">◀</button><button id="qpNext" title="다음 환자">▶</button><button id="qpEd">개별탭</button><button id="qpClose" title="닫기">✕</button></div>
+  <label class="qp-l" for="qpExam">검사 (lab · 영상 등)</label>
+  <textarea id="qpExam" rows="2" placeholder="AM CBC, CRP · CXR f/u …"></textarea>
+  <div class="qp-l">할 일</div>
+  <div id="qpTodo"></div>
+  <input id="qpAdd" placeholder="할 일 추가 (Enter)" autocomplete="off" enterkeyhint="done">
 </div>
 
 <div class="tvw" id="tv">
@@ -520,12 +556,13 @@
   }
 
   /* ════════════ 전체 인계장 (A4) ════════════ */
+  // V/S 칸은 전체탭에서도 눌러서 형광펜 켜고 끔 (q 간격·SpO2·BST도)
   function vsTpl(o){
-    const vl = (l, k) => `<span class="vsl${o[k] ? " hl" : ""}"><i>${l}</i></span>`;
-    const q = +o.vsq && +o.vsq !== 8 ? `<span class="vsq">q${+o.vsq}hr</span>` : "";
+    const vl = (l, k) => `<span class="vsl qt${o[k] ? " hl" : ""}" data-qt="${k}"><i>${l}</i></span>`;
+    const q = +o.vsq && +o.vsq !== 8 ? `<span class="vsq qt" data-qt="vsq">q${+o.vsq}hr</span>` : `<span class="vsq qt xoff" data-qt="vsq">q8</span>`;
     return `<span class="vstpl">${q}${vl("SBP","bp")}/${vl("DBP","bp")}-${vl("HR","hr")}-${vl("RR","rr")}-${vl("BT","bpr")}`
-      + (o.s ? `-(${vl("SpO2","s")})` : "")
-      + (o.b ? ` [${vl("BST" + (str(o.bn) ? " " + esc(str(o.bn)) : ""), "b")}]` : "") + `</span>`;
+      + (o.s ? `-(${vl("SpO2","s")})` : `<span class="qt xoff" data-qt="s">-(SpO2)</span>`)
+      + (o.b ? ` [${vl("BST" + (str(o.bn) ? " " + esc(str(o.bn)) : ""), "b")}]` : ` <span class="qt xoff" data-qt="b">[BST]</span>`) + `</span>`;
   }
   function tagsHTML(o){
     const t = (s, hi) => `<span class="t${hi ? " hi" : ""}">${esc(s)}</span>`;
@@ -545,7 +582,10 @@
     if (o.med) MED_TYPES.forEach(ty => (o.med[ty] || []).forEach(s => { if (+s > 0 && +s <= 3) h += `<span class="medc m${+s}">${ty}</span>`; }));
     return h;
   }
-  const togglesText = o => TOGGLES.filter(Boolean).filter(([k]) => o[k] && !VS_KEYS.includes(k)).map(([, l]) => l).join(" ");
+  // V/S 외 토글: 자리 고정(I/O defe | L U E R | m), 꺼진 건 화면에만 흐리게 → 전체탭에서 바로 눌러 켬
+  const QT_GROUPS = [["io","defe"], ["lab","ua","ekg","rad"], ["m"]];
+  const tgLabel = k => (TOGGLES.find(x => x && x[0] === k) || [k, k])[1];
+  const togglesHTML = o => QT_GROUPS.map(g => g.map(k => `<span class="qt${o[k] ? "" : " xoff"}" data-qt="${k}">${tgLabel(k)}</span>`).join("")).join(`<span class="sep"></span>`);
   function blockHTML(o, i){
     const dc = +o.dc || 0;
     const dcTxt = dc ? `<span class="dc${dc === 2 ? " big" : ""}">${esc(fmtMD(o.dcd))}${wdayOf(o.dcd)} <b>d/c</b></span>` : "";
@@ -569,7 +609,7 @@
       <td class="c-sum"><div class="sumbox">
         <div class="ln ln1">${str(o.dx) ? esc(o.dx).replace(/\n/g, " / ") : ""}${str(o.pmhx) ? ` <small>(${esc(o.pmhx)})</small>` : ""}${sxSummary(o) ? `<span class="co">c/o ${esc(sxSummary(o))}</span>` : ""}</div>
         <div class="ln ln2">${tagsHTML(o)}</div>
-        <div class="ln ln3"><span class="tgs">${esc(togglesText(o))}</span>${vsTpl(o)}</div>
+        <div class="ln ln3"><span class="tgs">${togglesHTML(o)}</span>${vsTpl(o)}</div>
       </div></td>
       <td class="c-todo"><div class="todobox">${items.join("")}</div></td>
     </tr>`;
@@ -625,7 +665,19 @@
   $("#sheets").addEventListener("click", e => {
     if (e.target.closest(".draghandle")) return;
     if (e.target.closest("tr.wrow")){ openTv(); return; }
-    const tr = e.target.closest("tr[data-i]"); if (tr) openEd(+tr.dataset.i);
+    const tr = e.target.closest("tr[data-i]"); if (!tr) return;
+    const i = +tr.dataset.i, o = P[i];
+    const qt = e.target.closest("[data-qt]");
+    if (qt){                                   // 전체탭에서 바로 토글
+      const k = qt.dataset.qt;
+      if (k === "vsq"){ const q = VSQ[(VSQ.indexOf(+o.vsq || 8) + 1) % VSQ.length]; o.vsq = q === 8 ? 0 : q; }
+      else if (k === "b"){ const v = str(o.bn);   // BST: 끔 → 4 → 2 → 1 → 끔
+        if (!o.b){ o.b = 1; o.bn = "4"; } else if (v === "4") o.bn = "2"; else if (v === "2") o.bn = "1"; else { o.b = 0; o.bn = ""; } }
+      else o[k] = o[k] ? 0 : 1;
+      renderSheet(); return;
+    }
+    if (e.target.closest("td.c-todo")){ openQp(i); return; }   // 할 일 칸 → 빠른 입력창
+    openEd(i);
   });
   let dragSrc = null;
   function blockIndexAtY(y){
@@ -916,6 +968,7 @@
     if (nx){ edIdx = nx.i; renderEd(); window.scrollTo(0, 0); }
   }
   function openEd(i){
+    if (qpIdx >= 0){ qpIdx = -1; $("#qp").hidden = true; document.body.classList.remove("qpopen"); }
     edIdx = Math.max(0, Math.min(count - 1, i));
     tvOn = false; document.body.classList.remove("tv");
     pvOn = true; document.body.classList.add("pv");
@@ -927,9 +980,59 @@
     renderSheet(); window.scrollTo(0, 0);
   }
 
+  /* ════════════ 전체탭 빠른 입력창: 검사·할 일만 바로 입력, ◀▶로 다음 환자 ════════════ */
+  let qpIdx = -1, qpTimer = null;
+  const qpRefresh = () => { clearTimeout(qpTimer); qpTimer = setTimeout(() => { renderSheet(); markQp(); }, 250); };
+  function markQp(){ document.querySelectorAll("#sheets tr.qcur").forEach(t => t.classList.remove("qcur"));
+    const tr = document.querySelector(`#sheets tr[data-i="${qpIdx}"]`); if (tr) tr.classList.add("qcur"); }
+  function renderQpTodo(focusId){
+    const o = P[qpIdx];
+    $("#qpTodo").innerHTML = (o.todo || []).map((r, j) => str(r.t) || r === undefined ? `<div class="li todo${r.c ? " done" : ""}">
+      <button class="cb${r.c ? " on" : ""}" data-qchk="${j}" title="완료">✓</button>
+      <input id="qt-${j}" data-qtodo="${j}" value="${esc(r.t)}" autocomplete="off">
+      <button class="x" data-qdel="${j}" title="삭제">×</button></div>` : "").join("");
+    const el = focusId && document.getElementById(focusId); if (el) el.focus({ preventScroll:true });
+  }
+  function openQp(i){
+    qpIdx = i; const o = P[i];
+    $("#qpBed").textContent = o.bed || ""; $("#qpName").textContent = str(o.name) || (i + 1) + "번 칸";
+    $("#qpExam").value = o.exam || ""; $("#qpAdd").value = "";
+    renderQpTodo();
+    $("#qp").hidden = false; document.body.classList.add("qpopen");
+    markQp();
+    $("#qpExam").focus({ preventScroll:true });
+  }
+  function closeQp(){ qpIdx = -1; $("#qp").hidden = true; document.body.classList.remove("qpopen"); clearTimeout(qpTimer); renderSheet(); }
+  function qpStep(dir){          // 이름 있는 칸 사이에서 이동 (빈 칸은 건너뜀)
+    for (let j = qpIdx + dir; j >= 0 && j < count; j += dir) if (filled(P[j])){ renderSheet(); openQp(j); return; }
+  }
+  $("#qpExam").addEventListener("input", e => { P[qpIdx].exam = e.target.value; refreshOut(); qpRefresh(); });
+  $("#qpAdd").addEventListener("keydown", e => {
+    if (e.key !== "Enter" || e.isComposing || e.keyCode === 229) return;
+    e.preventDefault();
+    const v = e.target.value.trim(); if (!v) return;
+    const o = P[qpIdx]; o.todo = o.todo || []; o.todo.push({ t:v }); e.target.value = "";
+    renderQpTodo(); refreshOut(); qpRefresh();
+  });
+  $("#qpTodo").addEventListener("input", e => {
+    const j = e.target.dataset.qtodo; if (j == null) return;
+    P[qpIdx].todo[+j].t = e.target.value; refreshOut(); qpRefresh();
+  });
+  $("#qpTodo").addEventListener("click", e => {
+    const o = P[qpIdx];
+    const c = e.target.closest("[data-qchk]"); if (c){ const r = o.todo[+c.dataset.qchk]; r.c = r.c ? 0 : 1; renderQpTodo(); refreshOut(); qpRefresh(); return; }
+    const d = e.target.closest("[data-qdel]"); if (d){ o.todo.splice(+d.dataset.qdel, 1); renderQpTodo(); refreshOut(); qpRefresh(); }
+  });
+  $("#qpPrev").addEventListener("click", () => qpStep(-1));
+  $("#qpNext").addEventListener("click", () => qpStep(1));
+  $("#qpClose").addEventListener("click", closeQp);
+  $("#qpEd").addEventListener("click", () => { const i = qpIdx; closeQp(); openEd(i); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && qpIdx >= 0) closeQp(); });
+
   /* ════════════ 할 일 모아보기: 모든 환자의 할 일 + 병동 공통 ════════════ */
   let tvOn = false;
   function openTv(){
+    if (qpIdx >= 0){ qpIdx = -1; $("#qp").hidden = true; document.body.classList.remove("qpopen"); }
     pvOn = false; document.body.classList.remove("pv");
     tvOn = true; document.body.classList.add("tv");
     renderTv(); window.scrollTo(0, 0);
@@ -1044,7 +1147,7 @@
   // 메신저가 끼워 넣는 보이지 않는 문자·줄바꿈·앞뒤 글을 걷어내고 코드만 뽑음
   function extractCode(raw){
     raw = String(raw || "");
-    const i = raw.indexOf("HND1:");
+    const i = raw.search(/hnd1:/i);   // 폰 자동 대소문자 변환으로 hnd1: 이 돼도 인식
     if (i < 0) return raw.trim();
     let body = raw.slice(i + 5).replace(/[\u200B-\u200D\u2060\uFEFF\s]/g, "");
     body = (body.match(/^[A-Za-z0-9+\/_-]*=*/) || [""])[0].replace(/-/g, "+").replace(/_/g, "/");
