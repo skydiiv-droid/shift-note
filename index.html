@@ -68,6 +68,12 @@
     border:0; border-radius:6px; padding:5px 10px; cursor:pointer;
   }
   .sync button:hover{background:#64748b}
+  .smsg{font-size:13px; line-height:1.5; border-radius:6px; padding:8px 10px; background:#334155; color:#e2e8f0}
+  .smsg.err{background:#7f1d1d; color:#fecaca}
+  .smsg.ok{background:#14532d; color:#bbf7d0}
+  .smsg .row{margin-top:6px}
+  .sync button.go{background:#0ea5e9}
+  .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:80; background:#14532d; color:#fff; font-size:14px; padding:10px 16px; border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,.3)}
 
   /* ───────── 전체 인계장 (A4, 자동 요약) ───────── */
   .stage{padding:14px; display:flex; flex-direction:column; align-items:center; gap:14px}
@@ -295,6 +301,7 @@
   </div>
   <label>가져오기 — 코드를 붙여넣고 적용 (이전 버전 코드도 됩니다)</label>
   <textarea id="sync-in" placeholder="HND1:..."></textarea>
+  <div class="smsg" id="syncMsg" hidden></div>
   <div class="row">
     <button id="syncApply">적용</button>
     <button id="syncOpen">파일 열기</button>
@@ -1034,6 +1041,16 @@
     return out;
   }
   function encode(s){ const b = xorBytes(new TextEncoder().encode(s)); let bin = ""; b.forEach(x => bin += String.fromCharCode(x)); return "HND1:" + btoa(bin); }
+  // 메신저가 끼워 넣는 보이지 않는 문자·줄바꿈·앞뒤 글을 걷어내고 코드만 뽑음
+  function extractCode(raw){
+    raw = String(raw || "");
+    const i = raw.indexOf("HND1:");
+    if (i < 0) return raw.trim();
+    let body = raw.slice(i + 5).replace(/[\u200B-\u200D\u2060\uFEFF\s]/g, "");
+    body = (body.match(/^[A-Za-z0-9+\/_-]*=*/) || [""])[0].replace(/-/g, "+").replace(/_/g, "/");
+    while (body.length % 4) body += "=";
+    return "HND1:" + body;
+  }
   function decode(code){
     code = (code||"").trim();
     if (!code.startsWith("HND1:")) return code;          // 평문 JSON도 하위호환
@@ -1042,26 +1059,51 @@
   const exportStr = () => JSON.stringify(Object.assign({ v:2, n:count, p:P.map(clean) }, wardItems().length ? { w:clean({ w:W }).w } : {}));
   function refreshOut(){ if ($("#syncpanel").classList.contains("open")) $("#sync-out").value = encode(exportStr()); }
   function flash(btn, text){ const o = btn.textContent; btn.textContent = text; setTimeout(() => btn.textContent = o, 1200); }
+  // 결과·확인은 패널 안에 표시 (앱 안 브라우저에서 alert/confirm 팝업이 막혀도 동작)
+  function syncMsg(html, kind){ const m = $("#syncMsg"); m.hidden = !html; m.className = "smsg" + (kind ? " " + kind : ""); m.innerHTML = html || ""; }
+  function toast(t){ const el = document.createElement("div"); el.className = "toast"; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 2200); }
+  let pending = null;
   function applyStr(raw){
-    let s;
-    try { s = decode((raw||"").trim()); } catch { alert("코드 형식이 올바르지 않아요."); return; }
-    if (!s){ alert("불러올 코드나 파일이 없어요."); return; }
-    let data; try { data = JSON.parse(s); } catch { alert("코드 형식이 올바르지 않아요."); return; }
-    let list = Array.isArray(data.p) ? data.p : (Array.isArray(data) ? data : null);
-    if (!list){ alert("인계장 데이터를 찾을 수 없어요."); return; }
+    pending = null;
+    const txt = String(raw || "").trim();
+    if (!txt){ syncMsg("붙여넣은 코드나 파일 내용이 없어요.", "err"); return; }
+    const code = extractCode(txt);
+    let s, data;
+    try { s = decode(code); data = JSON.parse(s); }
+    catch {
+      syncMsg(code.startsWith("HND1:")
+        ? "코드를 읽을 수 없어요. <b>코드가 중간에 잘렸을</b> 가능성이 커요.<br>카톡이면 메시지의 <b>전체보기</b>를 열고 전부 복사하거나, <b>.txt로 저장</b>한 파일을 보내서 <b>파일 열기</b>로 불러오세요."
+        : "인계장 코드가 아니에요. <b>HND1:</b> 로 시작하는 코드를 붙여넣어 주세요.", "err");
+      return;
+    }
+    let list = data && Array.isArray(data.p) ? data.p : (Array.isArray(data) ? data : null);
+    if (!list){ syncMsg("인계장 데이터를 찾을 수 없어요.", "err"); return; }
     list = list.map(o => (o && typeof o === "object") ? o : {});
-    list.forEach(normDept);
     if (data.v !== 2) list = list.map(migrate);          // 이전 버전 코드 → 새 형식
+    list.forEach(normDept);
     const n = list.filter(filled).length;
-    if (!confirm(`지금 화면을 불러온 데이터(${n}명 기재)로 덮어쓸까요?`)) return;
-    count = Math.min(MAX, Math.max(1, data.n || list.length || PER_PAGE));
-    P = Array.from({ length:count }, (_, i) => list[i] || {});
-    W = Array.isArray(data.w) ? data.w.filter(r => r && typeof r === "object") : [];
-    $("#syncpanel").classList.remove("open");
-    if (pvOn){ const f = P.findIndex(filled); edIdx = f >= 0 ? f : 0; renderEd(); }
-    renderTv();
-    renderSheet();
-    alert("적용됐어요.");
+    pending = { data, list };
+    syncMsg(`불러온 데이터: <b>${n}명</b> 기재${Array.isArray(data.w) && data.w.length ? ", 병동 공통 할 일 있음" : ""}. 지금 화면을 덮어쓸까요?
+      <div class="row"><button class="go" id="syncGo">덮어쓰기</button><button id="syncNo">취소</button></div>`);
+    $("#syncGo").addEventListener("click", commitApply);
+    $("#syncNo").addEventListener("click", () => { pending = null; syncMsg(""); });
+  }
+  function commitApply(){
+    if (!pending) return;
+    const { data, list } = pending; pending = null;
+    try {
+      count = Math.min(MAX, Math.max(1, data.n || list.length || PER_PAGE));
+      P = Array.from({ length:count }, (_, i) => list[i] || {});
+      W = Array.isArray(data.w) ? data.w.filter(r => r && typeof r === "object") : [];
+      if (pvOn){ const f = P.findIndex(filled); edIdx = f >= 0 ? f : 0; renderEd(); }
+      renderTv();
+      renderSheet();
+      syncMsg(""); $("#sync-in").value = "";
+      $("#syncpanel").classList.remove("open");
+      toast(`불러왔어요 (${list.filter(filled).length}명)`);
+    } catch (err){
+      syncMsg("불러오는 중 오류가 났어요: " + esc(err && err.message || err) + "<br>이 문구를 캡처해서 알려주세요.", "err");
+    }
   }
 
   /* ════════════ 툴바 ════════════ */
@@ -1084,7 +1126,7 @@
   $("#syncBtn").addEventListener("click", () => {
     const p = $("#syncpanel");
     if (p.classList.contains("open")){ p.classList.remove("open"); return; }
-    $("#sync-out").value = encode(exportStr()); $("#sync-in").value = ""; p.classList.add("open");
+    $("#sync-out").value = encode(exportStr()); $("#sync-in").value = ""; syncMsg(""); pending = null; p.classList.add("open");
   });
   $("#syncCopy").addEventListener("click", async () => {
     const el = $("#sync-out");
