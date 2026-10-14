@@ -140,7 +140,19 @@
   .todobox{display:flex; flex-wrap:wrap; align-content:flex-start; gap:0 6px; padding:1px 3px; height:100%; font-size:8pt; line-height:1.3; overflow:hidden}
   .ti{white-space:nowrap}
   .ti.done{color:#64748b}
-  .ti .ck{margin-left:2px}
+  .ti .ck{margin-left:2px; cursor:pointer; border-radius:2px}
+  @media screen{ .ti .ck:hover{background:#e0f2fe} }
+  .tadd{display:inline-block; width:1.25em; height:1.25em; line-height:1.1em; text-align:center; border:1px solid #94a3b8; border-radius:50%;
+    color:#475569; font-size:.9em; cursor:pointer; user-select:none}
+  .tadd:hover{background:#0ea5e9; color:#fff; border-color:#0ea5e9}
+  .tin{font:inherit; border:0; border-bottom:1px solid #0ea5e9; outline:0; background:#f0f9ff; width:8em; padding:0 2px}
+  .nmin{font:inherit; font-weight:700; text-align:center; width:100%; border:0; border-bottom:1px solid #0ea5e9; outline:0; background:#f0f9ff; padding:0}
+  /* 우클릭 서식 메뉴 */
+  .ctxmenu{position:fixed; z-index:60; background:#1e293b; border:1px solid #475569; border-radius:8px; padding:6px; box-shadow:0 6px 20px rgba(0,0,0,.35)}
+  .ctxmenu .cm-row{display:flex; gap:4px; margin:3px 0}
+  .ctxmenu button{font:inherit; font-size:13px; line-height:1; min-width:28px; height:28px; padding:0 6px; border:1px solid #475569; border-radius:6px; background:#0f172a; color:#e2e8f0; cursor:pointer}
+  .ctxmenu button:hover{outline:2px solid #38bdf8}
+  .ctxmenu .cm-colors button{font-weight:700; font-size:15px}
   .ti b{font-weight:700}
 
   /* ───────── 개별 인계장 (입력) ───────── */
@@ -180,21 +192,6 @@
   .tv-grp.ward input:focus{border-bottom-color:#0ea5e9; background:#f0f9ff}
   .tv-grp.ward .done input{color:#94a3b8; text-decoration:line-through}
   .tv-empty{color:#64748b; text-align:center; padding:24px 0; font-size:14px}
-
-  /* 전체탭 빠른 입력창 (할 일 칸 누르면) */
-  .qp{position:fixed; left:50%; transform:translateX(-50%); bottom:0; z-index:40; width:min(620px, 100%);
-    background:#fff; border-radius:14px 14px 0 0; box-shadow:0 -6px 24px rgba(15,23,42,.25); padding:10px 14px 14px; font-size:15px}
-  .qp-head{display:flex; align-items:center; gap:6px; margin-bottom:6px}
-  .qp-head b{font-size:17px}
-  .qp-bed{font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; color:#475569}
-  .qp-head .sp{flex:1}
-  .qp-head button{font:inherit; font-size:13px; border:1px solid #cbd5e1; background:#fff; border-radius:8px; padding:5px 10px; cursor:pointer}
-  .qp-l{display:block; font-size:12px; color:#64748b; margin:6px 0 2px}
-  .qp textarea, .qp input{font:inherit; font-size:15px; width:100%; border:0; border-bottom:1px solid #e2e8f0; padding:4px 2px; outline:0; background:transparent; resize:none}
-  .qp textarea:focus, .qp input:focus{border-bottom-color:#0ea5e9; background:#f0f9ff}
-  .qp .li.todo{grid-template-columns:1.6em minmax(0,1fr) 1.4em}
-  body.qpopen{padding-bottom:280px}
-  @media print{ .qp{display:none !important} body.qpopen{padding-bottom:0} }
 
   /* 전체탭 맨 위 병동 공통 줄 (공통 할 일 있을 때만) */
   #sheets tr.wrow td{vertical-align:middle}
@@ -293,9 +290,8 @@
     .stage{padding:0; display:block}
     .sheet{width:17cm; box-shadow:none; transform:none !important; margin-bottom:0 !important; break-after:page; page-break-after:always}
     .sheet:last-child{break-after:auto; page-break-after:auto}
-    .draghandle,.ph{display:none !important}
+    .draghandle,.ph,.tadd,.ctxmenu{display:none !important}
     .qt.xoff, .qt.xoff i{visibility:hidden}
-    #sheets tr.qcur td{background:transparent !important}
     #sheets tr td{background:transparent !important}
     .sheet, .sheet *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     html,body{width:17cm}
@@ -345,16 +341,6 @@
   <div class="ed-move"><button id="edPrev">◀ 이전</button><button id="edNext">다음 ▶</button></div>
   <div class="ed-tools"><button id="edUp">순서 위로</button><button id="edDown">순서 아래로</button><button id="edDel" class="del">이 환자 삭제</button></div>
   <div class="pvtoggle"><button class="sub" id="tvOpen2">할 일 모아보기</button><button id="pvClose">전체 인계장으로</button></div>
-</div>
-
-<div class="qp" id="qp" hidden>
-  <div class="qp-head"><span class="qp-bed" id="qpBed"></span><b id="qpName"></b><span class="sp"></span>
-    <button id="qpPrev" title="이전 환자">◀</button><button id="qpNext" title="다음 환자">▶</button><button id="qpEd">개별탭</button><button id="qpClose" title="닫기">✕</button></div>
-  <label class="qp-l" for="qpExam">검사 (lab · 영상 등)</label>
-  <textarea id="qpExam" rows="2" placeholder="AM CBC, CRP · CXR f/u …"></textarea>
-  <div class="qp-l">할 일</div>
-  <div id="qpTodo"></div>
-  <input id="qpAdd" placeholder="할 일 추가 (Enter)" autocomplete="off" enterkeyhint="done">
 </div>
 
 <div class="tvw" id="tv">
@@ -424,6 +410,8 @@
     if (str(o.sxt)) a.push(str(o.sxt).replace(/\n/g, " / "));
     return a.join(", ");
   }
+  // 할 일 서식 (전체탭 우클릭): fc 글씨색, hl 형광펜, b 볼드
+  const todoStyle = r => [r.fc ? `color:${r.fc}` : "", r.hl ? `background:${r.hl}` : "", r.b ? "font-weight:700" : ""].filter(Boolean).join(";");
   const IV_DUE = 3;   // IV 경과일 경고 기준(일)
   // V/S 칸에 형광펜으로 표시되는 토글 (전체탭 글씨에서는 빠짐). B* = BST → V/S 끝 [BST]
   const VS_KEYS = ["bp","hr","bpr","s","rr","b"];
@@ -593,7 +581,7 @@
     const sub = [esc(o.dept || ""), esc(as), hdOf(o), podOf(o)].filter(Boolean).join(" · ");
     const name = str(o.name) ? esc(o.name) : `<span class="ph">${filled(o) ? "이름" : "+"}</span>`;
     const items = [];
-    (o.todo || []).filter(r => str(r.t)).forEach(r => items.push(`<span class="ti${r.c ? " done" : ""}">${esc(r.t)}<span class="ck">${r.c ? "(+)" : "(   )"}</span></span>`));
+    (o.todo || []).forEach((r, j) => { if (str(r.t)) items.push(`<span class="ti${r.c ? " done" : ""}" data-ti="${j}"><span style="${todoStyle(r)}">${esc(r.t)}</span><span class="ck" data-tck="${j}">${r.c ? "(+)" : "(   )"}</span></span>`); });
     if (str(o.exam)) items.push(`<span class="ti"><b>검)</b> ${esc(o.exam).replace(/\n/g, " / ")}</span>`);
     (o.cons || []).filter(r => str(r.t) || str(r.r)).forEach(r => items.push(`<span class="ti"><b>${esc(r.t)}</b>▶${esc(r.r)}</span>`));
     return `<tr data-i="${i}">
@@ -602,7 +590,7 @@
         <svg class="dcslash" viewBox="0 0 100 100" preserveAspectRatio="none"><line x1="0" y1="100" x2="100" y2="0"/></svg>
         <div class="nmbox">
           <div class="nm-top"><span class="bed">${esc(o.bed || "")}</span>${dcTxt}</div>
-          <div class="nm-name${dc === 2 ? " struck" : ""}">${name}</div>
+          <div class="nm-name${dc === 2 ? " struck" : ""}" data-nm="${i}">${name}</div>
           <div class="nm-sub">${sub}</div>
         </div>
       </td>
@@ -611,7 +599,7 @@
         <div class="ln ln2">${tagsHTML(o)}</div>
         <div class="ln ln3"><span class="tgs">${togglesHTML(o)}</span>${vsTpl(o)}</div>
       </div></td>
-      <td class="c-todo"><div class="todobox">${items.join("")}</div></td>
+      <td class="c-todo"><div class="todobox">${items.join("")}<span class="tadd" data-tadd="1" title="할 일 추가">+</span></div></td>
     </tr>`;
   }
   // 한 줄: 가로로 넘치면 폰트 축소 / 여러 줄: 세로로 넘치면 축소
@@ -668,6 +656,12 @@
     const tr = e.target.closest("tr[data-i]"); if (!tr) return;
     const i = +tr.dataset.i, o = P[i];
     const qt = e.target.closest("[data-qt]");
+    if (ctxJustOpened) return;                 // 길게 눌러 메뉴 연 직후의 클릭은 무시
+    const ck = e.target.closest("[data-tck]");
+    if (ck){ const r = o.todo[+ck.dataset.tck]; r.c = r.c ? 0 : 1; renderSheet(); return; }   // ( ) 채우기
+    if (e.target.closest("[data-tadd]")){ startTodoAdd(i); return; }
+    if (e.target.closest(".tin, .nmin")) return;
+    if (e.target.closest("[data-nm]")){ startNameEdit(i); return; }
     if (qt){                                   // 전체탭에서 바로 토글
       const k = qt.dataset.qt;
       if (k === "vsq"){ const q = VSQ[(VSQ.indexOf(+o.vsq || 8) + 1) % VSQ.length]; o.vsq = q === 8 ? 0 : q; }
@@ -676,9 +670,99 @@
       else o[k] = o[k] ? 0 : 1;
       renderSheet(); return;
     }
-    if (e.target.closest("td.c-todo")){ openQp(i); return; }   // 할 일 칸 → 빠른 입력창
     openEd(i);
   });
+  // 전체탭 + : 할 일 칸 끝에 입력칸, Enter로 계속 추가 (Esc·빈칸이면 끝)
+  function startTodoAdd(i){
+    const box = document.querySelector(`#sheets tr[data-i="${i}"] .todobox`); if (!box) return;
+    const add = box.querySelector(".tadd");
+    const inp = document.createElement("input"); inp.className = "tin"; inp.placeholder = "할 일"; inp.setAttribute("enterkeyhint", "next");
+    add.replaceWith(inp); inp.focus({ preventScroll:true });
+    let done = false;
+    const finish = (again) => {
+      if (done) return; done = true;
+      const v = inp.value.trim();
+      if (v){ const o = P[i]; o.todo = o.todo || []; o.todo.push({ t:v }); }
+      renderSheet();
+      if (again && v) startTodoAdd(i);
+    };
+    inp.addEventListener("keydown", e => {
+      if (e.isComposing || e.keyCode === 229) return;
+      if (e.key === "Enter"){ e.preventDefault(); finish(true); }
+      else if (e.key === "Escape"){ inp.value = ""; finish(false); }
+    });
+    inp.addEventListener("blur", () => finish(false));
+  }
+  // 전체탭 이름: 누르면 바로 입력, Enter → 다음 칸 이름 (Shift+Enter 이전)
+  function startNameEdit(i){
+    const el = document.querySelector(`#sheets tr[data-i="${i}"] [data-nm]`); if (!el) return;
+    const inp = document.createElement("input"); inp.className = "nmin"; inp.value = P[i].name || ""; inp.placeholder = "이름";
+    inp.setAttribute("enterkeyhint", "next");
+    el.innerHTML = ""; el.appendChild(inp); inp.focus({ preventScroll:true }); inp.select();
+    let done = false;
+    const finish = (next) => {
+      if (done) return; done = true;
+      P[i].name = inp.value.trim();
+      renderSheet();
+      if (next){ const j = i + next; if (j >= 0 && j < count) startNameEdit(j); }
+    };
+    inp.addEventListener("keydown", e => {
+      if (e.isComposing || e.keyCode === 229) return;
+      if (e.key === "Enter" || e.key === "Tab"){ e.preventDefault(); finish(e.shiftKey ? -1 : 1); }
+      else if (e.key === "Escape"){ inp.value = P[i].name || ""; finish(0); }
+    });
+    inp.addEventListener("blur", () => finish(0));
+  }
+
+  // 전체탭 할 일 우클릭(폰은 길게 누르기) → 글씨색·형광펜·볼드
+  let ctxEl = null, ctxTarget = null, ctxJustOpened = false;
+  function ctxMenu(){
+    if (ctxEl) return ctxEl;
+    const m = document.createElement("div"); m.className = "ctxmenu"; m.hidden = true;
+    const fc = [["#000000","검정"],["#dc2626","빨강"],["#ea580c","주황"],["#16a34a","초록"],["#2563eb","파랑"],["#7c3aed","보라"]];
+    const hl = [["#fde047","노랑"],["#fdba74","주황"],["#bef264","연두"],["#7dd3fc","하늘"],["#f9a8d4","분홍"]];
+    m.innerHTML = `<div class="cm-row cm-colors">${fc.map(([v, n]) => `<button data-act="fc" data-v="${v}" style="color:${v}" title="${n}">가</button>`).join("")}</div>
+      <div class="cm-row">${hl.map(([v, n]) => `<button data-act="hl" data-v="${v}" style="background:${v}" title="${n}">&nbsp;</button>`).join("")}<button data-act="hl" data-v="" title="형광펜 지우기">✕</button></div>
+      <div class="cm-row"><button data-act="b"><b>B</b> 볼드</button><button data-act="clear">서식 지우기</button></div>`;
+    m.addEventListener("click", e => {
+      const b = e.target.closest("button"); if (!b || !ctxTarget) return;
+      const r = P[ctxTarget.i].todo[ctxTarget.j];
+      if (b.dataset.act === "fc") r.fc = b.dataset.v === "#000000" ? "" : b.dataset.v;
+      else if (b.dataset.act === "hl") r.hl = b.dataset.v;
+      else if (b.dataset.act === "b") r.b = r.b ? 0 : 1;
+      else { r.fc = ""; r.hl = ""; r.b = 0; }
+      m.hidden = true; renderSheet();
+    });
+    document.body.appendChild(m); ctxEl = m; return m;
+  }
+  function openCtx(x, y, i, j){
+    ctxTarget = { i, j };
+    const m = ctxMenu(); m.hidden = false;
+    m.style.left = Math.max(4, Math.min(x, window.innerWidth - m.offsetWidth - 4)) + "px";
+    m.style.top  = Math.max(4, Math.min(y, window.innerHeight - m.offsetHeight - 4)) + "px";
+  }
+  const closeCtx = () => { if (ctxEl) ctxEl.hidden = true; };
+  $("#sheets").addEventListener("contextmenu", e => {
+    const ti = e.target.closest("[data-ti]"); if (!ti) return;
+    e.preventDefault();
+    openCtx(e.clientX, e.clientY, +ti.closest("tr[data-i]").dataset.i, +ti.dataset.ti);
+  });
+  // 폰: 할 일을 0.5초 길게 누르면 같은 메뉴 (아이폰은 우클릭 이벤트가 없음)
+  let lpTimer = null, lpX = 0, lpY = 0;
+  $("#sheets").addEventListener("pointerdown", e => {
+    const ti = e.target.closest("[data-ti]"); if (!ti || e.pointerType !== "touch") return;
+    lpX = e.clientX; lpY = e.clientY;
+    lpTimer = setTimeout(() => {
+      lpTimer = null; ctxJustOpened = true; setTimeout(() => ctxJustOpened = false, 600);
+      openCtx(lpX, lpY, +ti.closest("tr[data-i]").dataset.i, +ti.dataset.ti);
+    }, 500);
+  });
+  $("#sheets").addEventListener("pointermove", e => { if (lpTimer && Math.hypot(e.clientX - lpX, e.clientY - lpY) > 8){ clearTimeout(lpTimer); lpTimer = null; } });
+  ["pointerup","pointercancel"].forEach(ev => $("#sheets").addEventListener(ev, () => { clearTimeout(lpTimer); lpTimer = null; }));
+  document.addEventListener("click", e => { if (ctxEl && !ctxEl.hidden && !ctxEl.contains(e.target) && !ctxJustOpened) closeCtx(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeCtx(); });
+  window.addEventListener("scroll", closeCtx, true);
+
   let dragSrc = null;
   function blockIndexAtY(y){
     const rows = [...document.querySelectorAll("#sheets tr[data-i]")];
@@ -759,7 +843,7 @@
     const lpick = edLinePick ? `<div class="lpick">${Object.keys(LINE_TYPES).concat("기타").map(k => `<span class="chip" data-addline="${k}">${k}</span>`).join("")}</div>` : "";
     const todos = (o.todo || []).map((r, j) => `<div class="li todo${r.c ? " done" : ""}">
         <button class="cb${r.c ? " on" : ""}" data-chk="${j}" title="완료">✓</button>
-        <input id="t-${j}" data-list="todo" data-j="${j}" data-p="t" value="${esc(r.t)}" placeholder="할 일 (Enter: 다음 줄)" autocomplete="off" enterkeyhint="next">
+        <input id="t-${j}" data-list="todo" data-j="${j}" data-p="t" value="${esc(r.t)}" style="${todoStyle(r)}" placeholder="할 일 (Enter: 다음 줄)" autocomplete="off" enterkeyhint="next">
         <button class="x" data-del="todo" data-j="${j}" title="삭제">×</button></div>`).join("");
     const cons = (o.cons || []).map((r, j) => `<div class="li cons">
         <input id="c-${j}-t" data-list="cons" data-j="${j}" data-p="t" value="${esc(r.t)}" placeholder="과" autocomplete="off">
@@ -968,7 +1052,6 @@
     if (nx){ edIdx = nx.i; renderEd(); window.scrollTo(0, 0); }
   }
   function openEd(i){
-    if (qpIdx >= 0){ qpIdx = -1; $("#qp").hidden = true; document.body.classList.remove("qpopen"); }
     edIdx = Math.max(0, Math.min(count - 1, i));
     tvOn = false; document.body.classList.remove("tv");
     pvOn = true; document.body.classList.add("pv");
@@ -980,59 +1063,9 @@
     renderSheet(); window.scrollTo(0, 0);
   }
 
-  /* ════════════ 전체탭 빠른 입력창: 검사·할 일만 바로 입력, ◀▶로 다음 환자 ════════════ */
-  let qpIdx = -1, qpTimer = null;
-  const qpRefresh = () => { clearTimeout(qpTimer); qpTimer = setTimeout(() => { renderSheet(); markQp(); }, 250); };
-  function markQp(){ document.querySelectorAll("#sheets tr.qcur").forEach(t => t.classList.remove("qcur"));
-    const tr = document.querySelector(`#sheets tr[data-i="${qpIdx}"]`); if (tr) tr.classList.add("qcur"); }
-  function renderQpTodo(focusId){
-    const o = P[qpIdx];
-    $("#qpTodo").innerHTML = (o.todo || []).map((r, j) => str(r.t) || r === undefined ? `<div class="li todo${r.c ? " done" : ""}">
-      <button class="cb${r.c ? " on" : ""}" data-qchk="${j}" title="완료">✓</button>
-      <input id="qt-${j}" data-qtodo="${j}" value="${esc(r.t)}" autocomplete="off">
-      <button class="x" data-qdel="${j}" title="삭제">×</button></div>` : "").join("");
-    const el = focusId && document.getElementById(focusId); if (el) el.focus({ preventScroll:true });
-  }
-  function openQp(i){
-    qpIdx = i; const o = P[i];
-    $("#qpBed").textContent = o.bed || ""; $("#qpName").textContent = str(o.name) || (i + 1) + "번 칸";
-    $("#qpExam").value = o.exam || ""; $("#qpAdd").value = "";
-    renderQpTodo();
-    $("#qp").hidden = false; document.body.classList.add("qpopen");
-    markQp();
-    $("#qpExam").focus({ preventScroll:true });
-  }
-  function closeQp(){ qpIdx = -1; $("#qp").hidden = true; document.body.classList.remove("qpopen"); clearTimeout(qpTimer); renderSheet(); }
-  function qpStep(dir){          // 이름 있는 칸 사이에서 이동 (빈 칸은 건너뜀)
-    for (let j = qpIdx + dir; j >= 0 && j < count; j += dir) if (filled(P[j])){ renderSheet(); openQp(j); return; }
-  }
-  $("#qpExam").addEventListener("input", e => { P[qpIdx].exam = e.target.value; refreshOut(); qpRefresh(); });
-  $("#qpAdd").addEventListener("keydown", e => {
-    if (e.key !== "Enter" || e.isComposing || e.keyCode === 229) return;
-    e.preventDefault();
-    const v = e.target.value.trim(); if (!v) return;
-    const o = P[qpIdx]; o.todo = o.todo || []; o.todo.push({ t:v }); e.target.value = "";
-    renderQpTodo(); refreshOut(); qpRefresh();
-  });
-  $("#qpTodo").addEventListener("input", e => {
-    const j = e.target.dataset.qtodo; if (j == null) return;
-    P[qpIdx].todo[+j].t = e.target.value; refreshOut(); qpRefresh();
-  });
-  $("#qpTodo").addEventListener("click", e => {
-    const o = P[qpIdx];
-    const c = e.target.closest("[data-qchk]"); if (c){ const r = o.todo[+c.dataset.qchk]; r.c = r.c ? 0 : 1; renderQpTodo(); refreshOut(); qpRefresh(); return; }
-    const d = e.target.closest("[data-qdel]"); if (d){ o.todo.splice(+d.dataset.qdel, 1); renderQpTodo(); refreshOut(); qpRefresh(); }
-  });
-  $("#qpPrev").addEventListener("click", () => qpStep(-1));
-  $("#qpNext").addEventListener("click", () => qpStep(1));
-  $("#qpClose").addEventListener("click", closeQp);
-  $("#qpEd").addEventListener("click", () => { const i = qpIdx; closeQp(); openEd(i); });
-  document.addEventListener("keydown", e => { if (e.key === "Escape" && qpIdx >= 0) closeQp(); });
-
   /* ════════════ 할 일 모아보기: 모든 환자의 할 일 + 병동 공통 ════════════ */
   let tvOn = false;
   function openTv(){
-    if (qpIdx >= 0){ qpIdx = -1; $("#qp").hidden = true; document.body.classList.remove("qpopen"); }
     pvOn = false; document.body.classList.remove("pv");
     tvOn = true; document.body.classList.add("tv");
     renderTv(); window.scrollTo(0, 0);
@@ -1058,7 +1091,7 @@
       if (!items.length) return;
       shown++;
       h += `<div class="tv-grp"><div class="tv-pt" data-open="${i}"><span class="bed">${esc(o.bed || "")}</span><b class="${+o.dc === 2 ? "struck" : ""}">${esc(o.name) || (i + 1) + "번"}</b><span class="go">개별탭 ›</span></div>`
-        + items.map(({ r, j }) => `<div class="tv-it${r.c ? " done" : ""}">${cb(r.c, `data-pchk="${i}:${j}"`)}<span class="tx">${esc(r.t)}</span><span></span></div>`).join("")
+        + items.map(({ r, j }) => `<div class="tv-it${r.c ? " done" : ""}">${cb(r.c, `data-pchk="${i}:${j}"`)}<span class="tx" style="${todoStyle(r)}">${esc(r.t)}</span><span></span></div>`).join("")
         + `</div>`;
     });
     if (!shown) h += `<div class="tv-empty">${showDone ? "환자 할 일이 없어요." : "남은 환자 할 일이 없어요."}</div>`;
