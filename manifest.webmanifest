@@ -1,7 +1,7 @@
 {
   "name": "인계장",
   "short_name": "인계장",
-  "description": "근무 인계장 작성·인쇄 (A4 1페이지, 최대 13명)",
+  "description": "근무 인계장 작성·인쇄 (기본 10명, 최대 20명)",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

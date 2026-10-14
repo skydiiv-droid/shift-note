@@ -313,7 +313,7 @@
   <b>인계장</b>
   <div class="cnt">
     <button id="minus" title="칸 수 줄이기">−</button>
-    <span id="cntLabel">13명</span>
+    <span id="cntLabel">10명</span>
     <button id="plus" title="칸 수 늘리기">+</button>
   </div>
   <button id="printBtn" class="primary">인쇄</button>
@@ -366,8 +366,9 @@
   "use strict";
   const $ = s => document.querySelector(s);
 
-  const MAX = 26;      // 최대 2장 (13명 넘으면 2장으로 나눔)
+  const MAX = 20;      // 최대 20명 (13명 넘으면 2장으로 나눔)
   const PER_PAGE = 13;
+  const DEFAULT_COUNT = 10;   // 처음 열었을 때 칸 수
   const USABLE_CM = 29.7 - 1.401*2;   // 26.898cm
   const MAX_BLK_CM = 0.95*3;
   const PX_CM = 96/2.54;
@@ -433,7 +434,7 @@
   const VSQ = [8, 4, 2, 1];   // V/S 측정 간격(hr). 기본 q8hr, 아닌 것만 전체탭에 빨갛게
 
   /* ── 데이터: 환자 배열이 단일 진실원. 두 화면은 여기서 그리기만 ── */
-  let count = PER_PAGE;   // 기본 13칸(1장)
+  let count = DEFAULT_COUNT;
   let P = Array.from({ length:count }, () => ({}));
   let W = [];   // 병동 공통 할 일 [{t, c}] — 환자와 무관한 업무
   let edIdx = 0, pvOn = false, edLinePick = false;
@@ -1302,7 +1303,7 @@
     if (!pending) return;
     const { data, list } = pending; pending = null;
     try {
-      count = Math.min(MAX, Math.max(1, data.n || list.length || PER_PAGE));
+      count = Math.min(MAX, Math.max(1, data.n || list.length || DEFAULT_COUNT));
       P = Array.from({ length:count }, (_, i) => list[i] || {});
       W = Array.isArray(data.w) ? data.w.filter(r => r && typeof r === "object") : [];
       if (pvOn){ const f = P.findIndex(filled); edIdx = f >= 0 ? f : 0; renderEd(); }
