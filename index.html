@@ -1417,47 +1417,57 @@
   function chartFor(o){
     normPatient(o);
     const L = ["Nr's rounded."];
+    // ① 맨 앞: monitoring → O2 → special V/S
+    if (o.m) L.push("EKG, SpO2 thynC monitoring kept.");
+    if (str(o.o2)){ const mm = str(o.o2).match(/(\d+(?:\.\d+)?)\s*L/i); L.push(mm ? `O2 ${mm[1]}L/min via n-p kept.` : `O2 ${str(o.o2)} kept.`); }
+    const vsN = [["bp","BP"],["hr","HR"],["rr","RR"],["bpr","BT"],["s","SpO2"]].filter(([k]) => o[k]).map(([, l]) => l);
+    const q = +o.vsq && +o.vsq !== 8 ? ` q${+o.vsq}hr` : "";
+    if (vsN.length) L.push(`special V/S (${vsN.join(", ")})${q} ck.`);
+    else if (q) L.push(`V/S${q} ck.`);
+    if (o.b) L.push(`BST ${str(o.bn) ? str(o.bn) + "회 " : ""}ck.`);
+
     const aids = o.aids || [];
-    // 보조기 / 부위 판단 (상지 → finger, 하지 → toe)
     const sites = aids.map(a => str(a.s)).concat(str(o.psite)).filter(Boolean);
-    const region = sites.some(s => LEG_RE.test(s)) || aids.some(a => /cast shoes|abduction pillow|IPC|AES/.test(a.t)) ? "leg"
-                 : sites.some(s => ARM_RE.test(s)) || aids.some(a => /arm sling|velpeau/.test(a.t)) ? "arm" : "";
+    const region = sites.some(x => LEG_RE.test(x)) || aids.some(a => /abduction pillow|IPC|AES/.test(a.t)) ? "leg"
+                 : sites.some(x => ARM_RE.test(x)) || aids.some(a => /arm sling|velpeau/.test(a.t)) ? "arm" : "";
     const side = sites.map(sideOf).find(Boolean) || "";
-    aids.filter(a => !/^(elevation|ice bag)$/.test(a.t)).forEach(a => L.push(`${aidText(a)} kept.`));
-    const elev = aids.find(a => a.t === "elevation"), ice = aids.find(a => a.t === "ice bag");
-    if (elev && ice) L.push("elevation & ice bag kept.");
-    else if (elev) L.push(`${aidText(elev)} kept.`);
-    else if (ice) L.push(`${aidText(ice)} kept.`);
+    const sx = sxList(o);
+    const painLine = () => {
+      if (sx.includes("Pain")) return `${str(o.psite) ? str(o.psite) + " pain" : (str(o.op) ? "OP site pain" : "pain")} NRS ${str(o.nrs) || "2"} ck.`;
+      return str(o.op) ? `OP site pain NRS ${str(o.nrs) || "2"} ck.` : "";
+    };
+    const pcaLine = () => +o.pca === 1 ? "iv PCA dropping state." : +o.pca === 2 ? "epi PCA dropping state." : "";
+    const patLine = () => o.pat ? "norspan patch 5mcg kept." : "";
+    const nvLine  = () => sx.includes("N/V") ? "N/V ck." : (str(o.op) || o.dept === "OS") ? "N/V none." : "";
+    const push = (...xs) => xs.filter(Boolean).forEach(x => L.push(x));
+
     if (o.dept === "OS" || aids.length){
+      // ② OS 순서: 보조기·dx → SMC → elevation/ice bag → pain → PCA → patch → N/V
+      const main = aids.filter(a => !/^(elevation|ice bag)$/.test(a.t));
+      main.forEach(a => L.push(`${aidText(a)} kept.`));
+      if (!main.length && str(o.op)) L.push("OP site dx kept.");
       const distal = region === "arm" ? "finger" : region === "leg" ? "toe" : "";
       L.push(distal ? `${side ? side + " " : ""}${distal} SMC+++ ck.` : "SMC ck.");
+      const elev = aids.find(a => a.t === "elevation"), ice = aids.find(a => a.t === "ice bag");
+      if (elev && ice) L.push("elevation & ice bag kept.");
+      else if (elev || ice) L.push(`${aidText(elev || ice)} kept.`);
+      push(painLine(), pcaLine(), patLine(), nvLine());
+    } else {
+      push(painLine(), pcaLine(), patLine(), nvLine());
     }
-    // 통증·증상
-    const sx = sxList(o);
-    if (sx.includes("Pain")) L.push(`${str(o.psite) ? str(o.psite) + " pain" : (str(o.op) ? "OP site pain" : "pain")} NRS ${str(o.nrs) || "2"} ck.`);
-    else if (str(o.op)) L.push(`OP site pain NRS ${str(o.nrs) || "2"} ck.`);
-    const ns = ["numbness","tingling","motor weakness","radiating pain"].filter(x => sx.includes(x));
-    ns.forEach(x => L.push(`${side ? side + " " : ""}${x} ck.`));
-    const other = sx.filter(x => x !== "Pain" && !ns.includes(x));
-    if (other.length) L.push(`c/o ${other.join(", ")}.`);
+    // ③ 나머지: 증상(한 줄씩) → 직접 쓴 호소 → 라인 → 수액 → NPO → 신체보호대·욕창 → ADL → 낙상 → 끝
+    sx.filter(x => x !== "Pain" && x !== "N/V").forEach(x => {
+      const lat = ["numbness","tingling","motor weakness","radiating pain","swelling"].includes(x) && side ? side + " " : "";
+      L.push(`${lat}${x} ck.`);
+    });
     (o.sxl || []).forEach(r => { if (str(r.t)) L.push(str(r.t).replace(/\.?$/, ".")); });
-    if (!sx.includes("N/V") && (str(o.op) || o.dept === "OS")) L.push("N/V none.");
-    // O2 · monitoring · PCA · patch
-    if (str(o.o2)){ const m = str(o.o2).match(/(\d+(?:\.\d+)?)\s*L/i); L.push(m ? `O2 ${m[1]}L/min via n-p kept.` : `O2 ${str(o.o2)} kept.`); }
-    if (o.m) L.push("EKG, SpO2 thynC monitoring kept.");
-    if (+o.pca === 1) L.push("iv PCA dropping state.");
-    if (+o.pca === 2) L.push("epi PCA dropping state.");
-    if (o.pat) L.push("norspan patch 5mcg kept.");
-    // 라인·튜브
     (o.lines || []).filter(l => str(l.t) && !isIV(l)).forEach(l => L.push(`${str(l.s) ? str(l.s) + " " : ""}${str(l.t)} kept.`));
     if ((o.lines || []).some(isIV)) L.push("처방 수액 점적 중.");
     if (o.dietb === "NPO" || /npo/i.test(o.diet || "")) L.push("NPO 유지 중.");
-    // 위험
     if (o.rest) L.push("신체보호대 적용 중, 피부 상태 관찰함.");
     if (o.sore) L.push("욕창 예방 위해 체위 변경함.");
-    // ADL (autocharting: 기본 환의·위생, 하지 +배변/배뇨/이동, 상지 +식이)
     const adl = ["환의 교체", "개인위생"];
-    if (aids.length && region === "leg" && !aids.some(a => /HV shoes/.test(a.t))) adl.push("배변", "배뇨", "침상 밖 이동");
+    if (aids.length && region === "leg") adl.push("배변", "배뇨", "침상 밖 이동");
     else if (aids.length && region === "arm") adl.push("식이섭취");
     L.push(adl.join(", ") + " 도움 줌.");
     if (o.fall) L.push("낙상 예방 교육함.");
