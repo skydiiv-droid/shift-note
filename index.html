@@ -167,6 +167,7 @@
   .ctxmenu button{font:inherit; font-size:13px; line-height:1; min-width:28px; height:28px; padding:0 6px; border:1px solid #475569; border-radius:6px; background:#0f172a; color:#e2e8f0; cursor:pointer}
   .ctxmenu button:hover{outline:2px solid #38bdf8}
   .ctxmenu .cm-colors button{font-weight:700; font-size:15px}
+  .ctxmenu.vsmode .cm-colors, .ctxmenu.vsmode .cm-row:last-child{display:none}
   .aidmenu button.on{background:#0ea5e9; border-color:#0ea5e9; color:#fff}
   .ti b{font-weight:700}
 
@@ -270,7 +271,8 @@
   .lpick .chip{color:#0f172a}
   .li.todo{grid-template-columns:1.6em minmax(0,1fr) 1.8em 1.4em}
   .li .fmt{border:1px solid #cbd5e1; border-radius:6px; background:#fff; color:#475569; font-size:13px; font-weight:700; padding:2px 0; cursor:pointer}
-  .li.cons{grid-template-columns:minmax(0,5em) auto minmax(0,1fr) 1.4em}
+  .li.cons{grid-template-columns:minmax(0,5em) auto minmax(0,1fr) 1.8em 1.4em}
+  .li.exr{grid-template-columns:minmax(0,1fr) 1.8em; align-items:start}
   .x{border:0; background:transparent; color:#94a3b8; font-size:20px; cursor:pointer; padding:0; line-height:1}
   .x:hover{color:#dc2626}
   .li .x{border:0; background:transparent; color:#94a3b8; font-size:20px; cursor:pointer; padding:0; line-height:1}
@@ -400,7 +402,7 @@
   // 위험 표시 (개별탭·전체탭 둘 다에서 켜고 끔)
   const RISKS = [["fall","낙상"],["sore","욕창"],["painr","통증"],["rest","신체"],["dnr","DNR"]];
   // 보조기: 하나씩 고르고 각각 부위 → 전체탭엔 'Lt long leg splint' 식으로
-  const AIDS = ["splint","cast","brace","C-collar","binder","arm sling","velpeau band","abduction pillow","AES","IPC","elevation","ice bag"];
+  const AIDS = ["splint","cast","EB rolling","brace","C-collar","binder","arm sling","velpeau band","abduction pillow","AES","IPC","elevation","ice bag"];
   const AID_OLD = { "sling":"arm sling", "elastic stocking":"AES" };
   const aidSort = a => a.sort((x, y) => AIDS.indexOf(x.t) - AIDS.indexOf(y.t));
   const aidText = a => (str(a.s) ? str(a.s) + " " : "") + a.t;
@@ -499,6 +501,7 @@
                    .filter(x => Object.keys(x).some(kk => kk !== "c"));
         if (a.length) r[k] = a;
       } else if (typeof v === "number"){ if (v) r[k] = v; }
+      else if (v && typeof v === "object"){ if (Object.values(v).some(x => x)) r[k] = v; }
       else if (str(v)) r[k] = v;
     }
     return r;
@@ -557,16 +560,16 @@
      전체탭 태그엔 fmt 있는 것만 짧게 (부위·성상 등은 개별탭에만) */
   const LF = {
     s:   ["s",   "부위"],
-    g:   ["g",   "G",      ["18","20","22","24"], v => v + "G"],
-    fr:  ["fr",  "Fr",     null, v => v + "Fr"],
-    way: ["way", "way",    ["2","3"], v => v + "way"],
-    cm:  ["cm",  "고정 cm", null, v => v + "cm"],
+    g:   ["g",   "G",      ["18","20","22","24"], v => v],
+    fr:  ["fr",  "Fr",     null, v => v],
+    way: ["way", "way",    ["2","3"], v => v],
+    cm:  ["cm",  "고정 cm", null, v => v],
     nos: ["nos", "비공",   ["Rt","Lt"]],
-    cc:  ["cc",  "배액 cc", null, v => v + "cc"],
+    cc:  ["cc",  "배액 cc", null, v => v],
     col: ["col", "성상"],
     suc: ["suc", "suction"],
     lu:  ["lu",  "lumen",  ["1","2","3"]],
-    ext: ["ext", "외부 cm", null, v => v + "cm"],
+    ext: ["ext", "외부 cm", null, v => v],
     memo:["memo","메모"],
   };
   const LINE_TYPES = {
@@ -583,7 +586,8 @@
   };
   const lineType = l => Object.keys(LINE_TYPES).find(k => k.toLowerCase() === str(l.t).toLowerCase());
   const lineFields = l => (LINE_TYPES[lineType(l)] || ["s","memo"]).map(k => LF[k]);
-  const lineSummary = l => lineFields(l).filter(f => f[3] && str(l[f[0]])).map(f => f[3](str(l[f[0]]))).join(" ");
+  // 전체탭: 단위 없이 점으로 이어 짧게 (Foley 16.2, L-tube 16.60, IV 20, Hemovac 120)
+  const lineSummary = l => lineFields(l).filter(f => f[3] && str(l[f[0]])).map(f => f[3](str(l[f[0]]))).join(".");
   const lineDays = l => daysAgo(l.d);
 
   /* ── 이전 버전(v1) 데이터 → 새 형식 ── */
@@ -609,7 +613,7 @@
   /* ════════════ 전체 인계장 (A4) ════════════ */
   // V/S 칸은 전체탭에서도 눌러서 형광펜 켜고 끔 (q 간격·SpO2·BST도)
   function vsTpl(o){
-    const vl = (l, k) => `<span class="vsl qt${o[k] ? " hl" : ""}" data-qt="${k}"><i>${l}</i></span>`;
+    const vl = (l, k) => `<span class="vsl qt${o[k] ? " hl" : ""}" data-qt="${k}"${o[k] && o.vsc && o.vsc[k] ? ` style="background:${o.vsc[k]}"` : ""}><i>${l}</i></span>`;
     const q = +o.vsq && +o.vsq !== 8 ? `<span class="vsq qt" data-qt="vsq">q${+o.vsq}hr</span>` : `<span class="vsq qt xoff" data-qt="vsq">q8</span>`;
     const mm = `<span class="qt vsm${o.m ? "" : " xoff"}" data-qt="m">M</span>`;
     return `<span class="vstpl">${q}${mm}${vl("SBP","bp")}/${vl("DBP","bp")}-${vl("HR","hr")}-${vl("RR","rr")}-${vl("BT","bpr")}`
@@ -651,17 +655,19 @@
   const QT_GROUPS = [["io","defe"], ["lab","ua","ekg","rad","sp","st","nd"]];
   const tgLabel = k => (TOGGLES.find(x => x && x[0] === k) || [k, k])[1];
   const togglesHTML = o => QT_GROUPS.map(g => g.map(k => `<span class="qt${o[k] ? "" : " xoff"}" data-qt="${k}">${tgLabel(k)}</span>`).join("")).join(`<span class="sep"></span>`)
-    + `<span class="sep"></span>` + RISKS.map(([k, l]) => o[k] ? `<span class="t hi qt" data-qt="${k}">${l}</span>` : `<span class="qt xoff" data-qt="${k}">${l}</span>`).join("");
+    + `<span class="sep"></span>` + RISKS.filter(([k]) => o[k]).map(([k, l]) => `<span class="t hi qt" data-qt="${k}">${l}</span>`).join("");
   function blockHTML(o, i){
     const dc = +o.dc || 0;
     const dcTxt = dc ? `<span class="dc${dc === 2 ? " big" : ""}">${esc(fmtMD(o.dcd))}${wdayOf(o.dcd)} <b>d/c</b></span>` : "";
     const as = str(o.age) + (o.sex ? "/" + o.sex : "");
-    const sub = [esc((o.dept || "") + (o.dept ? str(o.dno) : "")), esc(as), hdOf(o), podOf(o)].filter(Boolean).join(" · ");
+    const sa = [o.sex, str(o.age)].filter(Boolean).join("/");
+    const sub = [esc(sa), esc((o.dept || "") + (o.dept ? str(o.dno) : ""))].filter(Boolean).join(" · ");
+    const sub2 = [hdOf(o), podOf(o)].filter(Boolean).join(" · ");
     const name = str(o.name) ? esc(o.name) : `<span class="ph">${filled(o) ? "이름" : "+"}</span>`;
     const items = [];
     (o.todo || []).forEach((r, j) => { if (str(r.t)) items.push(`<span class="ti${r.c ? " done" : ""}" data-ti="${j}"><span style="${todoStyle(r)}">${esc(r.t)}</span><span class="ck" data-tck="${j}">${r.c ? "(+)" : "(   )"}</span></span>`); });
-    if (str(o.exam)) items.push(`<span class="ti"><b>검)</b> ${esc(o.exam).replace(/\n/g, " / ")}</span>`);
-    (o.cons || []).filter(r => str(r.t) || str(r.r)).forEach(r => items.push(`<span class="ti"><b>${esc(r.t)}</b>▶${esc(r.r)}</span>`));
+    if (str(o.exam)) items.push(`<span class="ti" data-ex="1"><span style="${todoStyle(o.exs || {})}"><b>검)</b> ${esc(o.exam).replace(/\n/g, " / ")}</span></span>`);
+    (o.cons || []).forEach((r, j) => { if (str(r.t) || str(r.r)) items.push(`<span class="ti" data-cs="${j}"><span style="${todoStyle(r)}"><b>${esc(r.t)}</b>▶${esc(r.r)}</span></span>`); });
     return `<tr data-i="${i}">
       <td class="c-name${dc === 2 ? " dctoday" : ""}">
         <span class="draghandle" data-i="${i}" title="드래그해서 순서 변경">≡</span>
@@ -669,7 +675,7 @@
         <div class="nmbox">
           <div class="nm-top"><span class="bed">${esc(o.bed || "")}</span>${dcTxt}</div>
           <div class="nm-name${dc === 2 ? " struck" : ""}" data-nm="${i}">${name}</div>
-          <div class="nm-sub">${sub}</div>
+          <div class="nm-sub">${sub}</div>${sub2 ? `<div class="nm-sub">${sub2}</div>` : ""}
         </div>
       </td>
       <td class="c-sum"><div class="sumbox">
@@ -819,7 +825,14 @@
       <div class="cm-row"><button data-act="b"><b>B</b> 볼드</button><button data-act="clear">서식 지우기</button></div>`;
     m.addEventListener("click", e => {
       const b = e.target.closest("button"); if (!b || !ctxTarget) return;
-      const r = P[ctxTarget.i].todo[ctxTarget.j];
+      const o = P[ctxTarget.i], T = ctxTarget;
+      if (T.kind === "vs"){                     // V/S 칸: 형광펜 색만 (✕ = 측정 표시 끔)
+        o.vsc = o.vsc || {};
+        if (b.dataset.act === "hl" && b.dataset.v){ o[T.key] = 1; o.vsc[T.key] = b.dataset.v === "#fde047" ? "" : b.dataset.v; }
+        else if (b.dataset.act === "hl"){ o[T.key] = 0; o.vsc[T.key] = ""; }
+        m.hidden = true; renderSheet(); if (pvOn) rerenderEd(); return;
+      }
+      const r = T.kind === "cons" ? o.cons[T.j] : T.kind === "exam" ? (o.exs = o.exs || {}) : o.todo[T.j];
       if (b.dataset.act === "fc") r.fc = b.dataset.v === "#000000" ? "" : b.dataset.v;
       else if (b.dataset.act === "hl") r.hl = b.dataset.v;
       else if (b.dataset.act === "b") r.b = r.b ? 0 : 1;
@@ -829,9 +842,13 @@
     });
     document.body.appendChild(m); ctxEl = m; return m;
   }
-  function openCtx(x, y, i, j){
-    ctxTarget = { i, j };
-    const m = ctxMenu(); m.hidden = false;
+  // target: { i, kind:"todo"|"cons"|"exam"|"vs", j | key }
+  let ctxOpenedAt = 0;
+  function openCtx(x, y, target){
+    ctxTarget = target; ctxOpenedAt = Date.now();
+    const m = ctxMenu();
+    m.classList.toggle("vsmode", target.kind === "vs");   // V/S 칸은 형광펜 줄만
+    m.hidden = false;
     m.style.left = Math.max(4, Math.min(x, window.innerWidth - m.offsetWidth - 4)) + "px";
     m.style.top  = Math.max(4, Math.min(y, window.innerHeight - m.offsetHeight - 4)) + "px";
   }
@@ -866,19 +883,29 @@
     aidEl.innerHTML = `<div class="cm-row" style="flex-wrap:wrap; max-width:260px">${AIDS.map(a => `<button data-aid="${a}" class="${l.includes(a) ? "on" : ""}">${a}</button>`).join("")}</div>
       <div class="cm-row"><button data-close="1">닫기</button></div>`;
   }
+  // 우클릭·길게 누르기 대상: 할 일 / 협진 / 검사 / V/S 칸
+  function fmtTarget(el){
+    const it = el.closest("[data-ti],[data-cs],[data-ex],.vsl[data-qt]"); if (!it) return null;
+    const i = +it.closest("tr[data-i]").dataset.i;
+    if (it.dataset.ti != null) return { i, kind:"todo", j:+it.dataset.ti };
+    if (it.dataset.cs != null) return { i, kind:"cons", j:+it.dataset.cs };
+    if (it.dataset.ex != null) return { i, kind:"exam" };
+    return { i, kind:"vs", key:it.dataset.qt };
+  }
   $("#sheets").addEventListener("contextmenu", e => {
-    const ti = e.target.closest("[data-ti]"); if (!ti) return;
+    const tg = fmtTarget(e.target); if (!tg) return;
     e.preventDefault();
-    openCtx(e.clientX, e.clientY, +ti.closest("tr[data-i]").dataset.i, +ti.dataset.ti);
+    openCtx(e.clientX, e.clientY, tg);
   });
   // 폰: 할 일을 0.5초 길게 누르면 같은 메뉴 (아이폰은 우클릭 이벤트가 없음)
   let lpTimer = null, lpX = 0, lpY = 0;
   $("#sheets").addEventListener("pointerdown", e => {
-    const ti = e.target.closest("[data-ti]"); if (!ti || e.pointerType !== "touch") return;
+    if (e.pointerType !== "touch") return;
+    const tg = fmtTarget(e.target); if (!tg) return;
     lpX = e.clientX; lpY = e.clientY;
     lpTimer = setTimeout(() => {
       lpTimer = null; ctxJustOpened = true; setTimeout(() => ctxJustOpened = false, 600);
-      openCtx(lpX, lpY, +ti.closest("tr[data-i]").dataset.i, +ti.dataset.ti);
+      openCtx(lpX, lpY, tg);
     }, 500);
   });
   $("#sheets").addEventListener("pointermove", e => { if (lpTimer && Math.hypot(e.clientX - lpX, e.clientY - lpY) > 8){ clearTimeout(lpTimer); lpTimer = null; } });
@@ -889,7 +916,8 @@
     if (aidEl && !aidEl.hidden && !aidEl.contains(e.target)) aidEl.hidden = true;
   });
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeCtx(); });
-  window.addEventListener("scroll", closeCtx, true);
+  // 열자마자 생기는 스크롤(화면 맞춤·폰 키보드 등)로 바로 닫히지 않게
+  window.addEventListener("scroll", () => { if (Date.now() - ctxOpenedAt > 500) closeCtx(); }, true);
 
   let dragSrc = null;
   function blockIndexAtY(y){
@@ -978,7 +1006,8 @@
     const cons = (o.cons || []).map((r, j) => `<div class="li cons">
         <input id="c-${j}-t" data-list="cons" data-j="${j}" data-p="t" value="${esc(r.t)}" placeholder="과" autocomplete="off">
         <span>▶</span>
-        <input id="c-${j}-r" data-list="cons" data-j="${j}" data-p="r" value="${esc(r.r)}" placeholder="내용" autocomplete="off">
+        <input id="c-${j}-r" data-list="cons" data-j="${j}" data-p="r" value="${esc(r.r)}" placeholder="내용" autocomplete="off" style="${todoStyle(r)}">
+        <button class="fmt" data-cfmt="${j}" title="글씨색·형광펜·볼드">가</button>
         <button class="x" data-del="cons" data-j="${j}" title="삭제">×</button></div>`).join("");
     const q = +o.vsq || 8;
     const qChip = `<span class="chip q${q !== 8 ? " alt" : ""}" data-vsq="1" title="V/S 간격 — 누를 때마다 q8→q4→q2→q1">q${q}hr</span>`;
@@ -1029,7 +1058,7 @@
         <div class="ed-help">${MED_TYPES.map(t => medLabel(t) + " " + MED_NAMES[t]).join(" · ")}<br>탭: 경구(초록)→주사(파랑)→기타(노랑)→끔 · 길게: 추가 · 두 번 탭: 삭제</div>
         ${inp("mednote", "약 메모 (ceftriaxone D3 …)")}</div></div>
       <div class="sec"><div class="k">체크</div><div class="v"><div class="tgrid">${tg}</div></div></div>
-      <div class="sec"><div class="k">검사</div><div class="v">${ta("exam", "예정 검사·결과")}</div></div>
+      <div class="sec"><div class="k">검사</div><div class="v"><div class="li exr">${ta("exam", "예정 검사·결과").replace("<textarea ", `<textarea style="${todoStyle(o.exs || {})}" `)}<button class="fmt" data-efmt="1" title="글씨색·형광펜·볼드">가</button></div></div></div>
       <div class="sec"><div class="k">할 일</div><div class="v">${todos}<button class="addbtn" data-add="todo">+ 할 일</button></div></div>
       <div class="sec"><div class="k">협진</div><div class="v">${cons}<button class="addbtn" data-add="cons">+ 협진</button></div></div>
       <div class="sec"><div class="k">d/c</div><div class="v"><div class="lbl">
@@ -1091,9 +1120,11 @@
   });
   $("#edCard").addEventListener("click", e => {
     const o = cur(), t = e.target;
-    const fb = t.closest("[data-tfmt]");
+    const fb = t.closest("[data-tfmt],[data-cfmt],[data-efmt]");
     if (fb){ const r = fb.getBoundingClientRect(); ctxJustOpened = true; setTimeout(() => ctxJustOpened = false, 0);
-      openCtx(r.left - 150, r.bottom + 4, edIdx, +fb.dataset.tfmt); return; }
+      const tg = fb.dataset.tfmt != null ? { i:edIdx, kind:"todo", j:+fb.dataset.tfmt }
+               : fb.dataset.cfmt != null ? { i:edIdx, kind:"cons", j:+fb.dataset.cfmt } : { i:edIdx, kind:"exam" };
+      openCtx(r.left - 150, r.bottom + 4, tg); return; }
     const ab = t.closest("[data-aid]");
     if (ab){ aidToggle(o, ab.dataset.aid); rerenderEd(); return; }
     if (t.closest("[data-pca]")){ o.pca = ((+o.pca || 0) + 1) % 3; rerenderEd(); return; }
