@@ -417,7 +417,15 @@
   const DIET_BASE = ["RD","SD","LD","SOW","NPO"];
   const DIET_MOD = ["당뇨","통풍","저염","장염","소아","pp"];
   const dietMods = o => str(o.dietm) ? str(o.dietm).split(",").filter(x => DIET_MOD.includes(x)) : [];
-  const dietText = o => [...dietMods(o), str(o.dietb), str(o.diet)].filter(Boolean).join(" ");
+  // 전체탭 표시: 일반밥 일반죽 / 당뇨밥 당뇨죽 당뇨미음 / 통풍밥 … (SOW·NPO는 그대로)
+  const DIET_KO = { RD:"밥", SD:"죽", LD:"미음" };
+  function dietText(o){
+    const mods = dietMods(o), b = str(o.dietb);
+    const main = DIET_KO[b] ? (mods.length ? mods.join("") : "일반") + DIET_KO[b]
+               : b ? b                                    // SOW, NPO
+               : mods.length ? mods.join("") + "식" : "";
+    return [main, str(o.diet)].filter(Boolean).join(" ");
+  }
   // 체크 토글 (이전 버전과 같은 키): 켜진 것만 전체 인계장에 찍힘
   const TOGGLES = [["io","I/O"],["defe","defe"],["m","M"],["bp","BP"],["hr","HR"],["rr","RR"],["bpr","T"],["s","S"],["b","B*"],
                    ["lab","L"],["ua","U"],["ekg","E"],["rad","R"],["sp","SP"],["st","ST"],["nd","ND"]];
