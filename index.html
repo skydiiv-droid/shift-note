@@ -279,6 +279,8 @@
   .li.cons{grid-template-columns:minmax(0,5em) auto minmax(0,1fr) 1.8em 1.4em}
   .chartpre{white-space:pre-wrap; font:inherit; font-size:13px; line-height:1.5; background:#f8fafb; border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px; margin:0}
   .chartbtn2{align-self:flex-start; font:inherit; font-size:14px; background:#0e8c7a; color:#fff; border:0; border-radius:8px; padding:8px 14px; cursor:pointer}
+  .vsin{display:flex; align-items:center; gap:3px; flex-wrap:wrap; font-size:13px; color:#64748b}
+  .card .vsin input{width:3.2em; text-align:center; padding:3px 1px}
   .li.exr{grid-template-columns:minmax(0,1fr) 1.8em; align-items:start}
   .x{border:0; background:transparent; color:#94a3b8; font-size:20px; cursor:pointer; padding:0; line-height:1}
   .x:hover{color:#dc2626}
@@ -1061,10 +1063,13 @@
       <div class="sec"><div class="k">진단</div><div class="v">${ta("dx", "Dx / C.C.")}${inp("pmhx", "PMHx (HTN, DM …)")}
         <div class="pair"><label class="lbl"><span>입원</span>${inp("adm", "0901", 'inputmode="decimal"')}<span class="calc" id="calc-hd">${hdOf(o)}</span></label>
         <label class="lbl"><span>수술</span>${inp("op", "0901", 'inputmode="decimal"')}<span class="calc" id="calc-pod">${podOf(o)}</span></label></div>
-        ${inp("opname", "수술명")}</div></div>
+        ${inp("opname", "수술명")}
+        <div class="lbl"><span>수술 부위</span>${inp("opsite", "abd, back, Lt knee …")}<span class="seg sm"><button data-set="port" data-v="1port" class="${o.port === "1port" ? "on" : ""}">1port</button><button data-set="port" data-v="2port" class="${o.port === "2port" ? "on" : ""}">2port</button><button data-set="port" data-v="3port" class="${o.port === "3port" ? "on" : ""}">3port</button></span></div></div></div>
       <div class="sec"><div class="k">증상</div><div class="v">
         <div class="chips">${sxButtons(o).map(x => `<span class="chip${sxList(o).includes(x) ? " on" : ""}" data-sx="${x}">${esc(x)}</span>`).join("")}</div>
         ${o.dept ? "" : `<div class="ed-help">과를 고르면 그 과에서 자주 보는 증상 버튼이 앞에 추가돼요</div>`}
+        ${o.dept === "NS" ? `<div class="lbl"><span>신경증상</span><span class="seg sm"><button data-set="nss" data-v="Lt" class="${o.nss === "Lt" ? "on" : ""}">Lt</button><button data-set="nss" data-v="Rt" class="${o.nss === "Rt" ? "on" : ""}">Rt</button><button data-set="nss" data-v="Both" class="${o.nss === "Both" ? "on" : ""}">Both</button></span><span class="seg sm"><button data-set="nsl" data-v="leg" class="${o.nsl === "leg" ? "on" : ""}">leg</button><button data-set="nsl" data-v="arm" class="${o.nsl === "arm" ? "on" : ""}">arm</button></span></div>` : ""}
+        ${sxList(o).includes("hematuria") ? `<div class="lbl"><span>hematuria</span><span class="seg sm"><button data-set="hg" data-v="1" class="${o.hg === "1" ? "on" : ""}">G1</button><button data-set="hg" data-v="2" class="${o.hg === "2" ? "on" : ""}">G2</button><button data-set="hg" data-v="3" class="${o.hg === "3" ? "on" : ""}">G3</button><button data-set="hg" data-v="4" class="${o.hg === "4" ? "on" : ""}">G4</button></span></div>` : ""}
         ${sxList(o).includes("Pain") ? `<div class="pair"><label class="lbl"><span>Pain 부위</span>${inp("psite", "")}</label><label class="lbl"><span>NRS</span>${inp("nrs", "0-10", 'inputmode="numeric"')}</label></div>` : ""}
         ${sxl}<button class="addbtn" data-add="sxl">+ 호소 직접 입력</button></div></div>
       <div class="sec"><div class="k">위험</div><div class="v">
@@ -1075,7 +1080,8 @@
         <div class="lbl"><span>식이</span><span class="seg sm">${DIET_BASE.map(b => `<button data-dietb="${b}" class="${o.dietb === b ? "on" : ""}">${b}</button>`).join("")}</span></div>
         <div class="chips">${DIET_MOD.map(m => `<span class="chip${dm.includes(m) ? " on" : ""}" data-dietm="${m}">${m}</span>`).join("")}<span class="ed-help" style="align-self:center">${dm.length ? "" : "선택 안 하면 일반"}</span></div>
         <label class="lbl"><span>식이 기타</span>${inp("diet", "직접 입력")}</label>
-        <label class="lbl"><span>활동</span>${inp("act", "", 'list="dl-act"')}</label></div></div>
+        <div class="lbl"><span>거동</span><span class="seg sm"><button data-set="mob" data-v="BR" class="${o.mob === "BR" ? "on" : ""}">BR</button><button data-set="mob" data-v="ABR" class="${o.mob === "ABR" ? "on" : ""}">ABR</button><button data-set="mob" data-v="amb" class="${o.mob === "amb" ? "on" : ""}">보행</button><button data-set="mob" data-v="wc" class="${o.mob === "wc" ? "on" : ""}">W/C</button></span></div>
+        <label class="lbl"><span>활동 메모</span>${inp("act", "", 'list="dl-act"')}</label></div></div>
       <div class="sec"><div class="k">라인</div><div class="v">${lines}<button class="addbtn" data-linepick="1">${edLinePick ? "닫기" : "+ 라인·튜브"}</button>${lpick}</div></div>
       <div class="sec"><div class="k">보조기</div><div class="v">
         <div class="chips">${AIDS.map(a => `<span class="chip${(o.aids || []).some(x => x.t === a) ? " on" : ""}" data-aid="${a}">${a}</span>`).join("")}</div>
@@ -1084,7 +1090,8 @@
         <div class="chips"><span class="chip pcac p${+o.pca || 0}" data-pca="1">${["PCA","iv PCA","epi PCA"][+o.pca || 0]}</span><span class="chip patc${o.pat ? " on" : ""}" data-pat="1">Pat</span></div>
         <div class="ed-help">${MED_TYPES.map(t => medLabel(t) + " " + MED_NAMES[t]).join(" · ")}<br>탭: 경구(초록)→주사(파랑)→기타(노랑)→끔 · 길게: 추가 · 두 번 탭: 삭제</div>
         ${inp("mednote", "약 메모 (ceftriaxone D3 …)")}</div></div>
-      <div class="sec"><div class="k">체크</div><div class="v"><div class="tgrid">${tg}</div></div></div>
+      <div class="sec"><div class="k">체크</div><div class="v"><div class="tgrid">${tg}</div>
+        <div class="vsin"><span>V/S</span>${inp("vs1", "SBP", 'inputmode="numeric"')}/${inp("vs2", "DBP", 'inputmode="numeric"')}-${inp("vhr", "HR", 'inputmode="numeric"')}-${inp("vrr", "RR", 'inputmode="numeric"')}-${inp("vbt", "BT", 'inputmode="decimal"')}<span>SpO2</span>${inp("vsp", "%", 'inputmode="numeric"')}</div></div></div>
       <div class="sec"><div class="k">검사</div><div class="v"><div class="li exr">${ta("exam", "예정 검사·결과").replace("<textarea ", `<textarea style="${todoStyle(o.exs || {})}" `)}<button class="fmt" data-efmt="1" title="글씨색·형광펜·볼드">가</button></div></div></div>
       <div class="sec"><div class="k">할 일</div><div class="v">${todos}<button class="addbtn" data-add="todo">+ 할 일</button></div></div>
       <div class="sec"><div class="k">협진</div><div class="v">${cons}<button class="addbtn" data-add="cons">+ 협진</button></div></div>
@@ -1424,61 +1431,124 @@
   function sideOf(t){ const m = str(t).match(/^(Lt|Rt|Both|both|Bil)\b/); return m ? (m[1] === "Bil" ? "Both" : m[1]) : ""; }
   function chartFor(o){
     normPatient(o);
-    const L = ["Nr's rounded."];
-    // ① 맨 앞: monitoring → O2 → special V/S
-    if (o.m) L.push("EKG, SpO2 thynC monitoring kept.");
-    if (str(o.o2)){ const mm = str(o.o2).match(/(\d+(?:\.\d+)?)\s*L/i); L.push(mm ? `O2 ${mm[1]}L/min via n-p kept.` : `O2 ${str(o.o2)} kept.`); }
-    const vsN = [["bp","BP"],["hr","HR"],["rr","RR"],["bpr","BT"],["s","SpO2"]].filter(([k]) => o[k]).map(([, l]) => l);
-    const q = +o.vsq && +o.vsq !== 8 ? ` q${+o.vsq}hr` : "";
-    if (vsN.length) L.push(`special V/S (${vsN.join(", ")})${q} ck.`);
-    else if (q) L.push(`V/S${q} ck.`);
-    if (o.b) L.push(`BST ${str(o.bn) ? str(o.bn) + "회 " : ""}ck.`);
-
-    const aids = o.aids || [];
-    const sites = aids.map(a => str(a.s)).concat(str(o.psite)).filter(Boolean);
-    const region = sites.some(x => LEG_RE.test(x)) || aids.some(a => /abduction pillow|IPC|AES/.test(a.t)) ? "leg"
-                 : sites.some(x => ARM_RE.test(x)) || aids.some(a => /arm sling|velpeau/.test(a.t)) ? "arm" : "";
-    const side = sites.map(sideOf).find(Boolean) || "";
-    const sx = sxList(o);
-    const painLine = () => {
-      if (sx.includes("Pain")) return `${str(o.psite) ? str(o.psite) + " pain" : (str(o.op) ? "OP site pain" : "pain")} NRS ${str(o.nrs) || "2"} ck.`;
-      return str(o.op) ? `OP site pain NRS ${str(o.nrs) || "2"} ck.` : "";
-    };
-    const pcaLine = () => +o.pca === 1 ? "iv PCA dropping state." : +o.pca === 2 ? "epi PCA dropping state." : "";
-    const patLine = () => o.pat ? "norspan patch 5mcg kept." : "";
-    const nvLine  = () => sx.includes("N/V") ? "N/V ck." : (str(o.op) || o.dept === "OS") ? "N/V none." : "";
+    const L = [];
+    const J = (...xs) => xs.filter(Boolean).join("  ");            // 한 줄에 여러 문장
     const push = (...xs) => xs.filter(Boolean).forEach(x => L.push(x));
+    const v = k => str(o[k]) || "__";
+    const sx = sxList(o), has = x => sx.includes(x);
+    const op = !!str(o.op);
+    const aids = o.aids || [];
+    const LATER = ["elevation","ice bag","AES","IPC"];               // 보조기 아닌 것: 뒤쪽에
+    const mainAids = aids.filter(a => !LATER.includes(a.t));
+    const lines = (o.lines || []).filter(l => str(l.t));
+    const isDrainNP = l => /^(hemovac|jp)$/i.test(str(l.t));          // 음압 배액
+    const drainName = l => /^hemovac$/i.test(str(l.t)) ? "H-VAC" : str(l.t);
+    const sites = aids.map(a => str(a.s)).concat(str(o.psite), str(o.opsite)).filter(Boolean);
+    const region = sites.some(x => LEG_RE.test(x)) ? "leg" : sites.some(x => ARM_RE.test(x)) || aids.some(a => /arm sling|velpeau/.test(a.t)) ? "arm" : "";
+    const side = sites.map(sideOf).find(Boolean) || "";
+    const NRS = "NRS 2";                                               // 차팅은 2점 고정
 
-    if (o.dept === "OS" || aids.length){
-      // ② OS 순서: 보조기·dx → SMC → elevation/ice bag → pain → PCA → patch → N/V
-      const main = aids.filter(a => !/^(elevation|ice bag)$/.test(a.t));
-      main.forEach(a => L.push(`${aidText(a)} kept.`));
-      if (!main.length && str(o.op)) L.push("OP site dx kept.");
-      const distal = region === "arm" ? "finger" : region === "leg" ? "toe" : "";
-      L.push(distal ? `${side ? side + " " : ""}${distal} SMC+++ ck.` : "SMC ck.");
-      const elev = aids.find(a => a.t === "elevation"), ice = aids.find(a => a.t === "ice bag");
-      if (elev && ice) L.push("elevation & ice bag kept.");
-      else if (elev || ice) L.push(`${aidText(elev || ice)} kept.`);
-      push(painLine(), pcaLine(), patLine(), nvLine());
+    L.push("Nr's rounded.");
+    // ── V/S ──
+    if (o.m) L.push("EKG, SpO2 thynC monitoring kept.");
+    const full = +o.vsq && +o.vsq !== 8;
+    if (full) L.push(`V/S ${v("vs1")}/${v("vs2")}-${v("vhr")}-${v("vrr")}-${v("vbt")} ck.`);
+    const dysp = has("dyspnea") ? "dyspnea ck." : "dyspnea none.";
+    if (str(o.o2)){
+      const mm = str(o.o2).match(/(\d+(?:\.\d+)?)\s*L/i);
+      L.push(J(mm ? `O2 ${mm[1]}L/min via n-p state.` : `O2 ${str(o.o2)} state.`, `SpO2 ${v("vsp")}%, ${dysp}`));
+    } else if (o.s) L.push(`room air sat ${v("vsp")}%, ${dysp}`);
+    if (!full && o.bpr) L.push(`BT ${v("vbt")}, chilling sign none.`);
+
+    // ── 공통 조각 ──
+    const tubeLine = l => {
+      const t = str(l.t);
+      if (/^foley$/i.test(t)) return `Foley cath ${[str(l.fr) && l.fr + "fr", str(l.way) && l.way + "way"].filter(Boolean).join(" ")}`.trim() + " kept.";
+      if (/^l-tube$/i.test(t)) return `L-tube ${[str(l.fr) && l.fr + "fr", str(l.cm) && l.cm + "cm"].filter(Boolean).join(" ")}`.trim() + " kept.";
+      return `${str(l.s) ? str(l.s) + " " : ""}${t} kept.`;
+    };
+    const drainLines = () => lines.filter(isDrainNP).map(l => `${str(l.s) || str(o.opsite) || ""} ${drainName(l)} negative pressure drain state.`.trim());
+    const otherDrains = () => lines.filter(l => /^(pcd|chest tube)$/i.test(str(l.t))).map(tubeLine);
+    const pcaGroup = () => {
+      const pca = +o.pca === 1 ? "iv PCA dropping state." : +o.pca === 2 ? "epi PCA dropping state." : "";
+      return J(pca, pca ? (has("N/V") ? "N/V ck." : "N/V none.") : "", o.pat ? "norspan patch 5mcg kept." : "",
+               ...aids.filter(a => a.t === "AES" || a.t === "IPC").map(a => `${a.t} kept.`));
+    };
+    const elevLine = () => {
+      const e = aids.some(a => a.t === "elevation"), i = aids.some(a => a.t === "ice bag");
+      return e && i ? "elevation, ice bag kept." : e ? "elevation kept." : i ? "ice bag kept." : "";
+    };
+    const dxLine = () => `${str(o.opsite) ? str(o.opsite) + " " : ""}OP site ${str(o.port) ? o.port + " " : ""}dx kept.`;
+    const SMC_SX = ["swelling","tingling","numbness"];
+    const NS_SX = ["numbness","tingling","motor weakness","radiating pain"];
+    const isNSspine = o.dept === "NS" && (!!o.nsl || /back|neck|spine|lumbar|cervical|L-|C-/i.test(str(o.psite) + str(o.opsite) + str(o.dx))
+                      || aids.some(a => /TLSO|collar/i.test(a.t + str(a.s))));
+
+    if (isNSspine){
+      // ── NS spine: (OP면 dx·배액 먼저) → SMC → pain, (OP 아니면 pain 먼저) → 거동 ──
+      const limb = o.nsl === "arm" ? "arm" : "leg", axial = limb === "arm" ? "neck" : "back";
+      const S = o.nss || "";
+      const aff = S === "Both" ? ["Lt","Rt"] : S ? [S] : [];
+      const smc = [];
+      aff.forEach(sd => {
+        ["numbness","tingling"].filter(has).forEach(x => smc.push(`${sd} ${limb} ${x} ck.`));
+      });
+      const intact = ["Lt","Rt"].filter(sd => !aff.includes(sd));
+      if (aff.length){
+        const wk = aff.map(sd => `${sd} ${limb} weakness ${has("motor weakness") ? "ck." : "none."}`);
+        smc.push(J(...wk, intact.length ? `${intact[0]} ${limb} SMC intact.` : ""));
+      } else smc.push(`both ${limb} SMC intact.`);
+      const pain = has("radiating pain") && S ? `${axial} - ${S === "Both" ? "both" : S} ${limb} radiating pain ${NRS} ck.`
+                 : `${op ? axial + " OP site" : axial} pain ${NRS} ck.`;
+      if (op){ L.push(str(o.opsite) ? dxLine() : `${axial} OP site dx kept.`); push(...drainLines(), ...smc, pain); }
+      else   { push(pain, ...smc, ...drainLines()); }
+      const brace = aids.filter(a => /^(brace|C-collar)$/.test(a.t)).map(a => a.t === "brace" ? (str(a.s) || "brace") : a.t)[0] || "";
+      const mob = o.mob;
+      if (mob === "amb") L.push(`ambulation${brace ? " with " + brace : ""} well.`);
+      else if (mob === "wc") L.push(`W/C ambulation${brace ? " with " + brace : ""} well.`);
+      else if (mob === "BR" || mob === "ABR"){ L.push(`${mob} state.`); if (brace) L.push(`${brace} kept.`); }
+      else if (brace) L.push(`${brace} kept.`);
+      push(pcaGroup());
     } else {
-      push(painLine(), pcaLine(), patLine(), nvLine());
+      // ── OS·GS·URO 등 ──
+      const isOS = o.dept === "OS" || mainAids.length > 0;
+      if (o.dept === "URO"){                                          // URO: Foley 먼저, 혈뇨 grade
+        lines.filter(l => /^foley$/i.test(str(l.t))).forEach(l => L.push(tubeLine(l)));
+        if (has("hematuria")) L.push(`hematuria ${str(o.hg) ? "G" + o.hg + " " : ""}ck.`);
+      }
+      mainAids.forEach(a => L.push(`${aidText(a)} kept.`));
+      if (op && !mainAids.length && (o.dept !== "URO" || str(o.opsite))) L.push(dxLine());
+      // SMC 이상 증상: 위치(통증 부위 → 보조기 부위 → 좌우)와 함께, SMC 줄 바로 앞
+      const loc = str(o.psite) || (mainAids[0] && str(mainAids[0].s)) || side;
+      SMC_SX.filter(has).forEach(x => L.push(`${loc ? loc + " " : ""}${x} ck.`));
+      if (isOS){
+        const distal = region === "arm" ? "finger" : region === "leg" ? "toe" : "";
+        L.push(distal ? `${side ? side + " " : ""}${distal} SMC intact.` : "SMC intact.");
+      }
+      push(...drainLines(), ...otherDrains(), elevLine());
+      if (op || has("Pain")) L.push(`${op ? "OP site" : (str(o.psite) || "")} pain ${NRS} ck.`.trim());
+      if (o.dept === "GS" && op){ L.push("ambulation teaching done."); L.push(has("flatus(-)") ? "g/o (-) ck." : "g/o well."); }
+      push(pcaGroup());
+      if (!o.pca && has("N/V")) L.push("N/V ck.");
     }
-    // ③ 나머지: 증상(한 줄씩) → 직접 쓴 호소 → 라인 → 수액 → NPO → 신체보호대·욕창 → ADL → 낙상 → 끝
-    sx.filter(x => x !== "Pain" && x !== "N/V").forEach(x => {
-      const lat = ["numbness","tingling","motor weakness","radiating pain","swelling"].includes(x) && side ? side + " " : "";
-      L.push(`${lat}${x} ck.`);
-    });
-    (o.sxl || []).forEach(r => { if (str(r.t)) L.push(str(r.t).replace(/\.?$/, ".")); });
-    (o.lines || []).filter(l => str(l.t) && !isIV(l)).forEach(l => L.push(`${str(l.s) ? str(l.s) + " " : ""}${str(l.t)} kept.`));
-    if ((o.lines || []).some(isIV)) L.push("처방 수액 점적 중.");
+    // ── 나머지 증상 (직접 입력한 호소는 수동 기록이라 제외) ──
+    const SX_TXT = { cough:"coughing seen.", sputum:"sputum sound seen." };
+    sx.filter(x => !["Pain","N/V","dyspnea","hematuria","flatus(-)"].includes(x) && !SMC_SX.includes(x) && !(isNSspine && NS_SX.includes(x)))
+      .forEach(x => L.push(SX_TXT[x] || `${x} ck.`));
+    if (has("dyspnea") && !str(o.o2) && !o.s) L.push("dyspnea ck.");
+    // ── 튜브(Foley 등) → 수액 → NPO → 욕창 → ADL → 낙상 → 끝 ──
+    lines.filter(l => !isIV(l) && !isDrainNP(l) && !/^(pcd|chest tube)$/i.test(str(l.t)) && !(o.dept === "URO" && /^foley$/i.test(str(l.t))))
+      .forEach(l => L.push(tubeLine(l)));
+    if (lines.some(isIV)) L.push("처방 수액 점적 중.");
     if (o.dietb === "NPO" || /npo/i.test(o.diet || "")) L.push("NPO 유지 중.");
-    if (o.rest) L.push("신체보호대 적용 중, 피부 상태 관찰함.");
-    if (o.sore) L.push("욕창 예방 위해 체위 변경함.");
+    if (o.sore) L.push("position change, back care done.");
     const adl = ["환의 교체", "개인위생"];
-    if (aids.length && region === "leg") adl.push("배변", "배뇨", "침상 밖 이동");
-    else if (aids.length && region === "arm") adl.push("식이섭취");
+    if (mainAids.length && region === "leg") adl.push("배변", "배뇨", "침상 밖 이동");
+    else if (mainAids.length && region === "arm") adl.push("식이섭취");
+    if (lines.some(l => /^foley$/i.test(str(l.t))) && !adl.includes("배변")) adl.push("배변", "배뇨");
     L.push(adl.join(", ") + " 도움 줌.");
-    if (o.fall) L.push("낙상 예방 교육함.");
+    if (o.fall) L.push("낙상 고위험군, side rail up state.");
+    // 신체보호대 차팅은 루틴 받으면 추가 (적용부위·사유·부위 사정)
     L.push("불편감 알리도록 함.");
     return L.join("\n");
   }
