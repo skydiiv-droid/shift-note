@@ -117,6 +117,8 @@
   .ln2 .rk{padding:0 2px; line-height:1.25}
   .ln2 .msep{display:inline-block; width:4px}
   .medc.xoff{background:none; color:#d5dce5; font-weight:400}
+  body.printing .mx{display:none !important}
+  .mzone .medl{min-width:2.4em}
   .medc[data-med], .t[data-aidpick]{cursor:pointer}
   .ln2b{font-size:7.5pt; flex:1.4; flex-wrap:wrap; align-content:center; row-gap:1px; white-space:normal}   /* 태그 많으면 2줄 */
   .ln2b > *{white-space:nowrap}
@@ -388,8 +390,13 @@
   const MAX_BLK_CM = 0.95*3;
   const PX_CM = 96/2.54;
   const WDAYS = ["일","월","화","수","목","금","토"];
-  const MED_TYPES = ["A","P","U","H","D","G","L"];
-  const MED_NAMES = { A:"항생제", P:"진통/해열", U:"URI", H:"혈압", D:"당뇨", G:"위장", L:"배변" };
+  // 약: 저장 키는 그대로(A P U H D G L은 이전 데이터와 호환), 화면 표시는 2~3자 약어
+  const MED_TYPES = ["A","P","U","H","D","G","L","AC","APT","Ins","Nar","Diu","Ster","Sed","AED","OP","AV","KCl"];
+  const MED_LABEL = { A:"Abx", P:"Ana", U:"URI", H:"HTN", D:"DM", G:"GI", L:"Lax" };
+  const medLabel = t => MED_LABEL[t] || t;
+  const MED_NAMES = { A:"항생제", P:"진통·해열", U:"감기약", H:"혈압약", D:"경구 당뇨약", G:"위장약", L:"변비약",
+                      AC:"항응고제", APT:"항혈소판제", Ins:"인슐린", Nar:"마약성 진통제", Diu:"이뇨제", Ster:"스테로이드",
+                      Sed:"수면·진정제", AED:"항경련제", OP:"골다공증", AV:"항바이러스제", KCl:"전해질 보충" };
   // 위험 표시 (개별탭·전체탭 둘 다에서 켜고 끔)
   const RISKS = [["fall","낙상"],["sore","욕창"],["painr","통증"],["rest","신체"],["dnr","DNR"]];
   // 보조기: 하나씩 고르고 각각 부위 → 전체탭엔 'Lt long leg splint' 식으로
@@ -622,7 +629,7 @@
     MED_TYPES.forEach(ty => {
       const a = (o.med && Array.isArray(o.med[ty]) && o.med[ty].length) ? o.med[ty] : [0];
       a.forEach((v, k) => (+v > 0 && +v <= 3 ? on : off).push(+v > 0 && +v <= 3
-        ? `<span class="medc m${+v}" data-med="${ty}:${k}">${ty}</span>` : `<span class="medc xoff mx" data-med="${ty}:${k}">${ty}</span>`));
+        ? `<span class="medc m${+v}" data-med="${ty}:${k}">${medLabel(ty)}</span>` : `<span class="medc xoff mx" data-med="${ty}:${k}">${medLabel(ty)}</span>`));
     });
     const pca = +o.pca || 0;
     (pca ? on : off).push(`<span class="medc pca p${pca}" data-pca="1">${["PCA","iv PCA","epi PCA"][pca]}</span>`.replace('class="medc pca p0"', 'class="medc pca xoff mx"'));
@@ -945,7 +952,7 @@
   function medHTML(m){
     m = m || {};
     return MED_TYPES.map(t => ((Array.isArray(m[t]) && m[t].length) ? m[t] : [0])
-      .map(x => `<span class="medl m${(+x >= 0 && +x <= 3) ? +x : 0}" data-t="${t}">${t}</span>`).join("")).join("");
+      .map(x => `<span class="medl m${(+x >= 0 && +x <= 3) ? +x : 0}" data-t="${t}" title="${MED_NAMES[t] || ""}">${medLabel(t)}</span>`).join("")).join("");
   }
   function lineCalc(l){
     const d = lineDays(l);
@@ -1024,7 +1031,7 @@
         ${aidRows}</div></div>
       <div class="sec"><div class="k">약</div><div class="v"><div class="mzone" id="mz">${medHTML(o.med)}</div>
         <div class="chips"><span class="chip pcac p${+o.pca || 0}" data-pca="1">${["PCA","iv PCA","epi PCA"][+o.pca || 0]}</span><span class="chip patc${o.pat ? " on" : ""}" data-pat="1">Pat</span></div>
-        <div class="ed-help">${MED_TYPES.map(t => t + " " + MED_NAMES[t]).join(" · ")} — 탭: 경구(초록)→주사(파랑)→기타(노랑)→끔 · 길게: 추가 · 두 번 탭: 삭제</div>
+        <div class="ed-help">${MED_TYPES.map(t => medLabel(t) + " " + MED_NAMES[t]).join(" · ")}<br>탭: 경구(초록)→주사(파랑)→기타(노랑)→끔 · 길게: 추가 · 두 번 탭: 삭제</div>
         ${inp("mednote", "약 메모 (ceftriaxone D3 …)")}</div></div>
       <div class="sec"><div class="k">체크</div><div class="v"><div class="tgrid">${tg}</div></div></div>
       <div class="sec"><div class="k">검사</div><div class="v">${ta("exam", "예정 검사·결과")}</div></div>
@@ -1404,8 +1411,11 @@
     if (edIdx >= count) edIdx = count - 1;
     renderSheet(); if (pvOn) renderEd();
   });
-  $("#printBtn").addEventListener("click", () => { renderSheet(); window.print(); });
-  window.addEventListener("beforeprint", renderSheet);
+  const prePrint  = () => { document.body.classList.add("printing"); renderSheet(); };
+  const postPrint = () => { document.body.classList.remove("printing"); renderSheet(); };
+  $("#printBtn").addEventListener("click", () => { prePrint(); window.print(); });
+  window.addEventListener("beforeprint", prePrint);
+  window.addEventListener("afterprint", postPrint);
   $("#clearBtn").addEventListener("click", () => {
     if (anyData() && !confirm("전체 내용을 지울까요? 되돌릴 수 없어요.")) return;
     P = Array.from({ length:count }, () => ({})); W = []; edIdx = 0;
