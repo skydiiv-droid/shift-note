@@ -616,25 +616,19 @@
       + (o.s ? `-(${vl("SpO2","s")})` : `<span class="qt xoff" data-qt="s">-(SpO2)</span>`)
       + (o.b ? ` [${vl("BST" + (str(o.bn) ? " " + esc(str(o.bn)) : ""), "b")}]` : ` <span class="qt xoff" data-qt="b">[BST]</span>`) + `</span>`;
   }
-  // 위험(낙상·욕창·통증·신체·DNR) + 알러지·격리 + 약 글자: 꺼진 건 화면에만 흐리게, 눌러서 켬
+  // 알러지·격리 + 쓰는 약만 (안 쓰는 약은 전체탭에 아예 안 나옴 — 약은 개별탭에서 켬)
   function riskMedHTML(o){
     const t = (s, hi) => `<span class="t${hi ? " hi" : ""}">${esc(s)}</span>`;
-    // 켜진 것(위험·알러지·격리·약)을 앞에 빈칸 없이, 꺼진 것은 뒤에 흐리게(화면만, 인쇄 땐 빠짐)
-    const offR = [];
-    let h = RISKS.map(([k, l]) => { if (o[k]) return `<span class="t hi qt" data-qt="${k}">${l}</span>`; offR.push(`<span class="qt xoff mx rk" data-qt="${k}">${l}</span>`); return ""; }).join("");
+    let h = "";
     if (str(o.allergy)) h += t(str(o.allergy) + " 알러지", 1);
     if (str(o.iso)) h += t(str(o.iso) + " 격리", 1);
-    // 약: 켜진 글자를 빈칸 없이 앞으로 붙이고, 꺼진 건 뒤에 흐리게(화면만, 인쇄 땐 아예 빠짐)
-    const on = [], off = [];
     MED_TYPES.forEach(ty => {
-      const a = (o.med && Array.isArray(o.med[ty]) && o.med[ty].length) ? o.med[ty] : [0];
-      a.forEach((v, k) => (+v > 0 && +v <= 3 ? on : off).push(+v > 0 && +v <= 3
-        ? `<span class="medc m${+v}" data-med="${ty}:${k}">${medLabel(ty)}</span>` : `<span class="medc xoff mx" data-med="${ty}:${k}">${medLabel(ty)}</span>`));
+      const a = (o.med && Array.isArray(o.med[ty])) ? o.med[ty] : [];
+      a.forEach((v, k) => { if (+v > 0 && +v <= 3) h += `<span class="medc m${+v}" data-med="${ty}:${k}">${medLabel(ty)}</span>`; });
     });
     const pca = +o.pca || 0;
-    (pca ? on : off).push(`<span class="medc pca p${pca}" data-pca="1">${["PCA","iv PCA","epi PCA"][pca]}</span>`.replace('class="medc pca p0"', 'class="medc pca xoff mx"'));
-    (o.pat ? on : off).push(o.pat ? `<span class="medc pat" data-pat="1">Pat</span>` : `<span class="medc xoff mx" data-pat="1">Pat</span>`);
-    h += on.join("") + `<span class="msep mx"></span>` + offR.join("") + off.join("");
+    if (pca) h += `<span class="medc pca p${pca}" data-pca="1">${["","iv PCA","epi PCA"][pca]}</span>`;
+    if (o.pat) h += `<span class="medc pat" data-pat="1">Pat</span>`;
     return h;
   }
   function tagsHTML(o){
@@ -656,7 +650,8 @@
   // V/S 외 토글: 자리 고정(I/O defe | L U E R | m), 꺼진 건 화면에만 흐리게 → 전체탭에서 바로 눌러 켬
   const QT_GROUPS = [["io","defe"], ["lab","ua","ekg","rad","sp","st","nd"]];
   const tgLabel = k => (TOGGLES.find(x => x && x[0] === k) || [k, k])[1];
-  const togglesHTML = o => QT_GROUPS.map(g => g.map(k => `<span class="qt${o[k] ? "" : " xoff"}" data-qt="${k}">${tgLabel(k)}</span>`).join("")).join(`<span class="sep"></span>`);
+  const togglesHTML = o => QT_GROUPS.map(g => g.map(k => `<span class="qt${o[k] ? "" : " xoff"}" data-qt="${k}">${tgLabel(k)}</span>`).join("")).join(`<span class="sep"></span>`)
+    + `<span class="sep"></span>` + RISKS.map(([k, l]) => o[k] ? `<span class="t hi qt" data-qt="${k}">${l}</span>` : `<span class="qt xoff" data-qt="${k}">${l}</span>`).join("");
   function blockHTML(o, i){
     const dc = +o.dc || 0;
     const dcTxt = dc ? `<span class="dc${dc === 2 ? " big" : ""}">${esc(fmtMD(o.dcd))}${wdayOf(o.dcd)} <b>d/c</b></span>` : "";
