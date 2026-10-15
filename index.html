@@ -1432,7 +1432,7 @@
   function chartFor(o){
     normPatient(o);
     const L = [];
-    const J = (...xs) => xs.filter(Boolean).join("  ");            // 한 줄에 여러 문장
+    const J = (...xs) => xs.filter(Boolean).join("\n");           // 마침표 찍으면 무조건 줄바꿈
     const push = (...xs) => xs.filter(Boolean).forEach(x => L.push(x));
     const v = k => str(o[k]) || "__";
     const sx = sxList(o), has = x => sx.includes(x);
@@ -1453,7 +1453,7 @@
     if (o.m) L.push("EKG, SpO2 thynC monitoring kept.");
     const full = +o.vsq && +o.vsq !== 8;
     if (full) L.push(`V/S ${v("vs1")}/${v("vs2")}-${v("vhr")}-${v("vrr")}-${v("vbt")} ck.`);
-    const dysp = has("dyspnea") ? "dyspnea ck." : "dyspnea none.";
+    const dysp = has("dyspnea") ? "mild dyspnea ck." : "dyspnea none.";
     if (str(o.o2)){
       const mm = str(o.o2).match(/(\d+(?:\.\d+)?)\s*L/i);
       L.push(J(mm ? `O2 ${mm[1]}L/min via n-p state.` : `O2 ${str(o.o2)} state.`, `SpO2 ${v("vsp")}%, ${dysp}`));
@@ -1527,7 +1527,7 @@
       }
       push(...drainLines(), ...otherDrains(), elevLine());
       if (op || has("Pain")) L.push(`${op ? "OP site" : (str(o.psite) || "")} pain ${NRS} ck.`.trim());
-      if (o.dept === "GS" && op){ L.push("ambulation teaching done."); L.push(has("flatus(-)") ? "g/o (-) ck." : "g/o well."); }
+      if (o.dept === "GS" && op){ L.push("ambulation teaching done."); L.push(has("flatus(-)") ? "g/o none." : "g/o well."); }
       push(pcaGroup());
       if (!o.pca && has("N/V")) L.push("N/V ck.");
     }
@@ -1535,7 +1535,7 @@
     const SX_TXT = { cough:"coughing seen.", sputum:"sputum sound seen." };
     sx.filter(x => !["Pain","N/V","dyspnea","hematuria","flatus(-)"].includes(x) && !SMC_SX.includes(x) && !(isNSspine && NS_SX.includes(x)))
       .forEach(x => L.push(SX_TXT[x] || `${x} ck.`));
-    if (has("dyspnea") && !str(o.o2) && !o.s) L.push("dyspnea ck.");
+    if (has("dyspnea") && !str(o.o2) && !o.s) L.push("mild dyspnea ck.");
     // ── 튜브(Foley 등) → 수액 → NPO → 욕창 → ADL → 낙상 → 끝 ──
     lines.filter(l => !isIV(l) && !isDrainNP(l) && !/^(pcd|chest tube)$/i.test(str(l.t)) && !(o.dept === "URO" && /^foley$/i.test(str(l.t))))
       .forEach(l => L.push(tubeLine(l)));
@@ -1550,7 +1550,7 @@
     if (o.fall) L.push("낙상 고위험군, side rail up state.");
     // 신체보호대 차팅은 루틴 받으면 추가 (적용부위·사유·부위 사정)
     L.push("불편감 알리도록 함.");
-    return L.join("\n");
+    return L.join("\n").replace(/\.\s+(?=\S)/g, ".\n");
   }
   async function copyChart(i){
     const o = P[i]; if (!filled(o)){ toast("빈 칸이에요"); return; }
