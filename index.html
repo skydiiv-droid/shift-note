@@ -77,7 +77,12 @@
 
   /* ───────── 전체 인계장 (A4, 자동 요약) ───────── */
   .stage{padding:14px; display:flex; flex-direction:column; align-items:center; gap:14px}
-  .sheet{width:17cm; background:#fff; box-shadow:0 2px 12px rgba(15,23,42,.18); transform-origin:top center}
+  .sheet{width:17cm; background:#fff; box-shadow:0 2px 12px rgba(15,23,42,.18); transform-origin:top center; position:relative}
+  /* 간호기록 버튼: 종이 오른쪽 바깥 (인쇄 안 됨, 좁은 화면에선 개별탭 버튼 사용) */
+  .chartcol{position:absolute; top:0; left:100%; width:78px; height:100%}
+  .chartbtn{position:absolute; left:10px; font:inherit; font-size:12px; background:#0e8c7a; color:#fff; border:0; border-radius:8px; padding:5px 8px; cursor:pointer; white-space:nowrap}
+  .chartbtn:hover{background:#0b7566}
+  @media (max-width:1000px){ .chartcol{display:none} }
   table.form{width:16.76cm; margin:0 auto; border-collapse:collapse; table-layout:fixed}   /* 17cm→16.76: 인쇄 우측 잘림 방지 */
   table.form td{padding:0; border:var(--line); vertical-align:top; overflow:hidden; color:var(--ink)}
   @media screen{
@@ -272,6 +277,8 @@
   .li.todo{grid-template-columns:1.6em minmax(0,1fr) 1.8em 1.4em}
   .li .fmt{border:1px solid #cbd5e1; border-radius:6px; background:#fff; color:#475569; font-size:13px; font-weight:700; padding:2px 0; cursor:pointer}
   .li.cons{grid-template-columns:minmax(0,5em) auto minmax(0,1fr) 1.8em 1.4em}
+  .chartpre{white-space:pre-wrap; font:inherit; font-size:13px; line-height:1.5; background:#f8fafb; border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px; margin:0}
+  .chartbtn2{align-self:flex-start; font:inherit; font-size:14px; background:#0e8c7a; color:#fff; border:0; border-radius:8px; padding:8px 14px; cursor:pointer}
   .li.exr{grid-template-columns:minmax(0,1fr) 1.8em; align-items:start}
   .x{border:0; background:transparent; color:#94a3b8; font-size:20px; cursor:pointer; padding:0; line-height:1}
   .x:hover{color:#dc2626}
@@ -317,7 +324,7 @@
     .stage{padding:0; display:block}
     .sheet{width:17cm; box-shadow:none; transform:none !important; margin-bottom:0 !important; break-after:page; page-break-after:always}
     .sheet:last-child{break-after:auto; page-break-after:auto}
-    .draghandle,.ph,.tadd,.ctxmenu{display:none !important}
+    .draghandle,.ph,.tadd,.ctxmenu,.chartcol{display:none !important}
     .xoff, .xoff i{visibility:hidden}
     .mx{display:none !important}   /* 꺼진 약은 인쇄에서 자리도 안 차지 */
     #sheets tr td{background:transparent !important}
@@ -486,7 +493,7 @@
   let count = DEFAULT_COUNT;
   let P = Array.from({ length:count }, () => ({}));
   let W = [];   // 병동 공통 할 일 [{t, c}] — 환자와 무관한 업무
-  let edIdx = 0, pvOn = false, edLinePick = false;
+  let edIdx = 0, pvOn = false, edLinePick = false, edChartOpen = false;
 
   const esc = v => String(v == null ? "" : v).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const str = v => (v == null ? "" : String(v)).trim();
@@ -732,6 +739,17 @@
     document.querySelectorAll("#sheets .ln3").forEach(el => fitWidth(el, 7.5, 5));
     document.querySelectorAll("#sheets .ln4").forEach(el => fitWidth(el, 8, 5));
     document.querySelectorAll("#sheets .todobox").forEach(el => fitHeight(el, 8, 5));
+    // 각 줄 오른쪽(종이 밖)에 간호기록 버튼
+    document.querySelectorAll("#sheets .sheet").forEach(sh => {
+      const col = document.createElement("div"); col.className = "chartcol";
+      sh.querySelectorAll("tr[data-i]").forEach(tr => {
+        const i = +tr.dataset.i; if (!filled(P[i])) return;
+        const b = document.createElement("button"); b.className = "chartbtn"; b.dataset.chart = i; b.textContent = "간호기록";
+        b.style.top = (tr.offsetTop + tr.offsetHeight / 2 - 12) + "px";
+        col.appendChild(b);
+      });
+      sh.appendChild(col);
+    });
     $("#cntLabel").textContent = count + "명";
     scaleToFit();
     refreshOut();
@@ -740,6 +758,7 @@
 
   /* ── 전체 인계장: 칸 누르면 개별 인계장 / ≡ 드래그로 순서 변경 ── */
   $("#sheets").addEventListener("click", e => {
+    const cb = e.target.closest("[data-chart]"); if (cb){ copyChart(+cb.dataset.chart); return; }
     if (e.target.closest(".draghandle")) return;
     if (e.target.closest("tr.wrow")){ openTv(); return; }
     const tr = e.target.closest("tr[data-i]"); if (!tr) return;
@@ -1064,7 +1083,10 @@
       <div class="sec"><div class="k">d/c</div><div class="v"><div class="lbl">
         <span class="seg"><button data-dc="0" class="${dc === 0 ? "on" : ""}">없음</button><button data-dc="1" class="${dc === 1 ? "on" : ""}">예정</button><button data-dc="2" class="${dc === 2 ? "on" : ""}">퇴원</button></span>
         ${inp("dcd", "0901", `inputmode="decimal" ${dc ? "" : "disabled"}`)}<span class="calc" id="calc-wd">${wdayOf(o.dcd)}</span></div></div></div>
-      <div class="sec"><div class="k">메모</div><div class="v">${ta("memo", "보호자, 특이사항 …")}</div></div>`;
+      <div class="sec"><div class="k">메모</div><div class="v">${ta("memo", "보호자, 특이사항 …")}</div></div>
+      <div class="sec"><div class="k">간호기록</div><div class="v">
+        <button class="addbtn" data-chartprev="1">${edChartOpen ? "미리보기 닫기" : "미리보기 (초안)"}</button>
+        ${edChartOpen ? `<pre class="chartpre">${esc(chartFor(o))}</pre><button class="chartbtn2" data-chartcopy="1">간호기록 복사</button>` : ""}</div></div>`;
     document.querySelectorAll("#edCard textarea").forEach(autoGrow);
     renderNav();
   }
@@ -1120,6 +1142,8 @@
   });
   $("#edCard").addEventListener("click", e => {
     const o = cur(), t = e.target;
+    if (t.closest("[data-chartprev]")){ edChartOpen = !edChartOpen; rerenderEd(); return; }
+    if (t.closest("[data-chartcopy]")){ copyChart(edIdx); return; }
     const fb = t.closest("[data-tfmt],[data-cfmt],[data-efmt]");
     if (fb){ const r = fb.getBoundingClientRect(); ctxJustOpened = true; setTimeout(() => ctxJustOpened = false, 0);
       const tg = fb.dataset.tfmt != null ? { i:edIdx, kind:"todo", j:+fb.dataset.tfmt }
@@ -1384,6 +1408,73 @@
   // 결과·확인은 패널 안에 표시 (앱 안 브라우저에서 alert/confirm 팝업이 막혀도 동작)
   function syncMsg(html, kind){ const m = $("#syncMsg"); m.hidden = !html; m.className = "smsg" + (kind ? " " + kind : ""); m.innerHTML = html || ""; }
   function toast(t){ const el = document.createElement("div"); el.className = "toast"; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 2200); }
+  /* ════════════ 간호기록 초안 (autocharting 규칙 기반) ════════════
+     Nr's rounded. 로 시작 → 환자 정보 → 불편감 알리도록 함. 으로 끝.
+     ※ 초안: 문구는 계속 다듬는 중. 입력이 없으면 해당 줄은 빠짐 */
+  const ARM_RE = /arm|wrist|hand|elbow|shoulder|finger|forearm|clavicle|humer|radi|ulna|UE\b/i;
+  const LEG_RE = /leg|knee|ankle|foot|toe|hip|femur|tibia|fibula|LE\b|thigh/i;
+  function sideOf(t){ const m = str(t).match(/^(Lt|Rt|Both|both|Bil)\b/); return m ? (m[1] === "Bil" ? "Both" : m[1]) : ""; }
+  function chartFor(o){
+    normPatient(o);
+    const L = ["Nr's rounded."];
+    const aids = o.aids || [];
+    // 보조기 / 부위 판단 (상지 → finger, 하지 → toe)
+    const sites = aids.map(a => str(a.s)).concat(str(o.psite)).filter(Boolean);
+    const region = sites.some(s => LEG_RE.test(s)) || aids.some(a => /cast shoes|abduction pillow|IPC|AES/.test(a.t)) ? "leg"
+                 : sites.some(s => ARM_RE.test(s)) || aids.some(a => /arm sling|velpeau/.test(a.t)) ? "arm" : "";
+    const side = sites.map(sideOf).find(Boolean) || "";
+    aids.filter(a => !/^(elevation|ice bag)$/.test(a.t)).forEach(a => L.push(`${aidText(a)} kept.`));
+    const elev = aids.find(a => a.t === "elevation"), ice = aids.find(a => a.t === "ice bag");
+    if (elev && ice) L.push("elevation & ice bag kept.");
+    else if (elev) L.push(`${aidText(elev)} kept.`);
+    else if (ice) L.push(`${aidText(ice)} kept.`);
+    if (o.dept === "OS" || aids.length){
+      const distal = region === "arm" ? "finger" : region === "leg" ? "toe" : "";
+      L.push(distal ? `${side ? side + " " : ""}${distal} SMC+++ ck.` : "SMC ck.");
+    }
+    // 통증·증상
+    const sx = sxList(o);
+    if (sx.includes("Pain")) L.push(`${str(o.psite) ? str(o.psite) + " pain" : (str(o.op) ? "OP site pain" : "pain")} NRS ${str(o.nrs) || "2"} ck.`);
+    else if (str(o.op)) L.push(`OP site pain NRS ${str(o.nrs) || "2"} ck.`);
+    const ns = ["numbness","tingling","motor weakness","radiating pain"].filter(x => sx.includes(x));
+    ns.forEach(x => L.push(`${side ? side + " " : ""}${x} ck.`));
+    const other = sx.filter(x => x !== "Pain" && !ns.includes(x));
+    if (other.length) L.push(`c/o ${other.join(", ")}.`);
+    (o.sxl || []).forEach(r => { if (str(r.t)) L.push(str(r.t).replace(/\.?$/, ".")); });
+    if (!sx.includes("N/V") && (str(o.op) || o.dept === "OS")) L.push("N/V none.");
+    // O2 · monitoring · PCA · patch
+    if (str(o.o2)){ const m = str(o.o2).match(/(\d+(?:\.\d+)?)\s*L/i); L.push(m ? `O2 ${m[1]}L/min via n-p kept.` : `O2 ${str(o.o2)} kept.`); }
+    if (o.m) L.push("EKG, SpO2 thynC monitoring kept.");
+    if (+o.pca === 1) L.push("iv PCA dropping state.");
+    if (+o.pca === 2) L.push("epi PCA dropping state.");
+    if (o.pat) L.push("norspan patch 5mcg kept.");
+    // 라인·튜브
+    (o.lines || []).filter(l => str(l.t) && !isIV(l)).forEach(l => L.push(`${str(l.s) ? str(l.s) + " " : ""}${str(l.t)} kept.`));
+    if ((o.lines || []).some(isIV)) L.push("처방 수액 점적 중.");
+    if (o.dietb === "NPO" || /npo/i.test(o.diet || "")) L.push("NPO 유지 중.");
+    // 위험
+    if (o.rest) L.push("신체보호대 적용 중, 피부 상태 관찰함.");
+    if (o.sore) L.push("욕창 예방 위해 체위 변경함.");
+    // ADL (autocharting: 기본 환의·위생, 하지 +배변/배뇨/이동, 상지 +식이)
+    const adl = ["환의 교체", "개인위생"];
+    if (aids.length && region === "leg" && !aids.some(a => /HV shoes/.test(a.t))) adl.push("배변", "배뇨", "침상 밖 이동");
+    else if (aids.length && region === "arm") adl.push("식이섭취");
+    L.push(adl.join(", ") + " 도움 줌.");
+    if (o.fall) L.push("낙상 예방 교육함.");
+    L.push("불편감 알리도록 함.");
+    return L.join("\n");
+  }
+  async function copyChart(i){
+    const o = P[i]; if (!filled(o)){ toast("빈 칸이에요"); return; }
+    const txt = chartFor(o);
+    try { await navigator.clipboard.writeText(txt); }
+    catch {
+      const ta = document.createElement("textarea"); ta.value = txt; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch(_){} ta.remove();
+    }
+    toast(`간호기록 복사됨 — ${str(o.name) || (i + 1) + "번"}`);
+  }
+
   let pending = null;
   function applyStr(raw){
     pending = null;
