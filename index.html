@@ -112,7 +112,8 @@
   .ln1{font-size:9pt; font-weight:600}
   .ln1 small{font-weight:400; font-size:.85em}
   .ln1 .co{font-weight:400; margin-left:4px}
-  .ln2{font-size:7.5pt; gap:2px}
+  .ln2{font-size:7.5pt; gap:1px 2px; flex:1.3; flex-wrap:wrap; align-content:center; white-space:normal}
+  .ln2 > *{white-space:nowrap}
   .ln2 .rk{padding:0 2px; line-height:1.25}
   .ln2 .msep{display:inline-block; width:4px}
   .medc.xoff{background:none; color:#d5dce5; font-weight:400}
@@ -121,7 +122,11 @@
   .ln2b > *{white-space:nowrap}
   .t.xoff{border-style:dashed; border-color:#d5dce5; color:#cbd5e1}
   .ti{-webkit-touch-callout:none}
-  .ln3{font-size:8pt}
+  .ln3{font-size:7.5pt}
+  .ln4{font-size:8pt; flex:1.1}
+  .vsm{font-weight:700; margin-right:3px}
+  .medc.pca.p1{background:var(--inj)} .medc.pca.p2{background:#fb923c} .medc.pat{background:var(--etc)}
+  .medc[data-pca], .medc[data-pat]{cursor:pointer; padding:0 3px}
   .t{border:0.5pt solid #333; border-radius:2px; padding:0 2px; line-height:1.25}
   .t.hi{background:#111; color:#fff; border-color:#111; font-weight:700}
   .medc{font-weight:700; padding:0 2px; border-radius:2px; line-height:1.25}
@@ -279,6 +284,15 @@
   .ed-help{font-size:11.5px; color:#94a3b8}
   .tgrid{display:flex; flex-wrap:wrap; gap:5px; align-items:center}
   .tgrid .chip{min-width:2.4em; text-align:center}
+  .tgrid .slash{color:#94a3b8; margin:0 4px}
+  .tgrid .brk{flex-basis:100%; height:0}
+  .li.sxi{grid-template-columns:minmax(0,1fr) 1.4em}
+  .card input.dno{width:2.6em; text-align:center}
+  .row3{grid-template-columns:4.6em auto minmax(0,1fr) 2.8em !important}
+  .aidn{min-width:7.5em; color:#0f172a !important; font-size:13px !important}
+  .chip.pcac.p1{background:var(--inj); color:#0f172a; border-color:var(--inj); font-weight:700}
+  .chip.pcac.p2{background:#fb923c; color:#0f172a; border-color:#fb923c; font-weight:700}
+  .chip.patc.on{background:var(--etc); color:#0f172a; border-color:var(--etc); font-weight:700}
   .card input.bn{width:2.6em; text-align:center}
   .ed-move{display:flex; gap:8px; padding:12px 0 0}
   .ed-move button{flex:1; font:inherit; font-size:15px; background:#e2e8f0; color:#0f172a; border:0; border-radius:10px; padding:12px; cursor:pointer}
@@ -301,6 +315,7 @@
     .sheet:last-child{break-after:auto; page-break-after:auto}
     .draghandle,.ph,.tadd,.ctxmenu{display:none !important}
     .xoff, .xoff i{visibility:hidden}
+    .mx{display:none !important}   /* 꺼진 약은 인쇄에서 자리도 안 차지 */
     #sheets tr td{background:transparent !important}
     .sheet, .sheet *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     html,body{width:17cm}
@@ -377,15 +392,22 @@
   const MED_NAMES = { A:"항생제", P:"진통/해열", U:"URI", H:"혈압", D:"당뇨", G:"위장", L:"배변" };
   // 위험 표시 (개별탭·전체탭 둘 다에서 켜고 끔)
   const RISKS = [["fall","낙상"],["sore","욕창"],["painr","통증"],["rest","신체"],["dnr","DNR"]];
-  // 보조기 (여러 개 선택 + 부위 메모)
-  const AIDS = ["splint","cast","brace","C-collar","sling","abduction pillow","elastic stocking"];
-  const aidList = o => str(o.aid) ? str(o.aid).split(",").filter(x => AIDS.includes(x)) : [];
-  // 체크 토글 (이전 버전과 같은 키): 켜진 것만 전체 인계장에 찍힘. null = 구분 간격
-  const TOGGLES = [["io","I/O"],["defe","defe"],null,["bp","BP"],["hr","HR"],["bpr","T"],["s","S"],["rr","RR"],null,
-                   ["lab","L"],["ua","U"],["ekg","E"],["rad","R"],null,["b","B*"],["m","m"]];
+  // 보조기: 하나씩 고르고 각각 부위 → 전체탭엔 'Lt long leg splint' 식으로
+  const AIDS = ["splint","cast","brace","C-collar","binder","arm sling","velpeau band","abduction pillow","AES","IPC","elevation","ice bag"];
+  const AID_OLD = { "sling":"arm sling", "elastic stocking":"AES" };
+  const aidSort = a => a.sort((x, y) => AIDS.indexOf(x.t) - AIDS.indexOf(y.t));
+  const aidText = a => (str(a.s) ? str(a.s) + " " : "") + a.t;
+  // 식이: 기본형 하나 + 치료식(여러 개, 안 고르면 일반) + 직접 입력
+  const DIET_BASE = ["RD","SD","LD","SOW","NPO"];
+  const DIET_MOD = ["당뇨","통풍","저염","장염","소아","pp"];
+  const dietMods = o => str(o.dietm) ? str(o.dietm).split(",").filter(x => DIET_MOD.includes(x)) : [];
+  const dietText = o => [...dietMods(o), str(o.dietb), str(o.diet)].filter(Boolean).join(" ");
+  // 체크 토글 (이전 버전과 같은 키): 켜진 것만 전체 인계장에 찍힘
+  const TOGGLES = [["io","I/O"],["defe","defe"],["m","M"],["bp","BP"],["hr","HR"],["rr","RR"],["bpr","T"],["s","S"],["b","B*"],
+                   ["lab","L"],["ua","U"],["ekg","E"],["rad","R"],["sp","SP"],["st","ST"],["nd","ND"]];
   // 진료과 (병동 업무 매뉴얼 wiki/99_부록/부서_약어.md 기준)
-  const DEPTS = [["OS","정형외과"],["NS","신경외과"],["NR","신경과"],["GS","외과"],["GI","소화기내과"],["PU","호흡기내과"],["CV","심장내과"],
-                 ["NE","신장내과"],["ENT","이비인후과"],["URO","비뇨기과"],["OBGY","산부인과"],["ED","내분비내과"],["PED","소아과"],["DT","치과"]];
+  const DEPTS = [["OS","정형외과"],["NS","신경외과"],["NR","신경과"],["GS","외과"],["GI","소화기내과"],["PU","호흡기내과"],["AM","호흡기알레르기내과"],
+                 ["CV","심장내과"],["NE","신장내과"],["IF","감염내과"],["URO","비뇨기과"],["OBGY","산부인과"],["ED","내분비내과"],["PED","소아과"],["DT","치과"]];
   // 증상 버튼: 공통 + 과별. 발열은 V/S(BT)로 보므로 제외. Pain은 부위·NRS 따로
   const SX_COMMON = ["Pain","URI","dyspnea","N/V","dizziness","H/A","constipation","diarrhea","insomnia","G/W"];
   const SX_DEPT = {
@@ -393,36 +415,54 @@
     NS:   ["motor weakness","numbness","radiating pain","seizure","mental change"],
     NR:   ["motor weakness","dysarthria","dysphagia","seizure","mental change","tremor"],
     GS:   ["abd. distension","flatus(-)","oozing","anorexia"],
-    GI:   ["abd. distension","melena","hematochezia","hematemesis","anorexia","dyspepsia","jaundice"],
+    GI:   ["abd. distension","melena","hematochezia","hematemesis","anorexia","dyspepsia","jaundice","edema","ascites"],
     PU:   ["cough","sputum","hemoptysis","wheezing"],
+    AM:   ["cough","sputum","wheezing","rhinorrhea","pruritus","rash"],
+    IF:   ["chills","cough","sputum","wound discharge","rash"],
     CV:   ["chest discomfort","palpitation","orthopnea","edema","syncope"],
     NE:   ["edema","oliguria","pruritus","anorexia"],
-    ENT:  ["sore throat","nasal obstruction","rhinorrhea","epistaxis","hearing loss","dysphagia"],
     URO:  ["dysuria","hematuria","frequency","urgency","retention"],
     OBGY: ["vaginal bleeding","vaginal discharge"],
     ED:   ["polyuria","polydipsia","hypoglycemia sx","palpitation"],
     PED:  ["cough","rhinorrhea","poor oral intake","irritability"],
     DT:   ["swelling","bleeding","trismus"],
   };
-  const SX = [...new Set(SX_COMMON.concat(...Object.values(SX_DEPT), ["edema","dysuria"]))];   // 저장값으로 인정하는 전체 목록
+  const SX = [...new Set(SX_COMMON.concat(...Object.values(SX_DEPT), ["edema","dysuria","sore throat","nasal obstruction","epistaxis","hearing loss"]))];   // 저장값으로 인정하는 전체 목록
   const sxButtons = o => { const sel = sxList(o);
     return [...new Set((SX_DEPT[o.dept] || []).concat(SX_COMMON, sel))]; };   // 과별 → 공통 → 이미 고른 것(과를 바꿔도 안 사라지게)
   // 이전 버전의 '과 / 주치의' 자유 입력 → 과 코드 + 주치의
   function normDept(o){
     if (!o || !str(o.dept) || DEPTS.some(d => d[0] === o.dept)) return o;
-    const m = str(o.dept).match(/^([A-Za-z]+)\s*[\/·,]?\s*(.*)$/);
+    const m = str(o.dept).match(/^([A-Za-z]+)\s*(\d*)/);
     const code = m && DEPTS.find(d => d[0] === m[1].toUpperCase());
-    if (code){ o.dept = code[0]; if (m[2] && !str(o.doc)) o.doc = m[2]; }
-    else { if (!str(o.doc)) o.doc = o.dept; o.dept = ""; }
+    if (code){ o.dept = code[0]; if (m[2] && !str(o.dno)) o.dno = m[2]; }
+    else o.dept = "";                          // 목록에 없는 과(예: 삭제된 ENT)는 비움
+    return o;
+  }
+  // 저장 형식 정리 (이전 버전 값 → 지금 형식). 그릴 때마다 불러도 안전
+  function normPatient(o){
+    if (!o || typeof o !== "object") return o;
+    if (!Array.isArray(o.aids) && (str(o.aid) || str(o.aidm))){           // 보조기: aid(콤마)+aidm → [{t, s}]
+      o.aids = str(o.aid).split(",").map(x => AID_OLD[x] || x).filter(x => AIDS.includes(x)).map(t => ({ t, s: str(o.aidm) }));
+      delete o.aid; delete o.aidm;
+    }
+    if (!Array.isArray(o.sxl) && str(o.sxt)){                              // 증상 직접 입력: 한 덩어리 → 줄마다
+      o.sxl = str(o.sxt).split("\n").map(t => ({ t:t.trim() })).filter(x => x.t);
+      delete o.sxt;
+    }
+    if (!str(o.dietb) && DIET_BASE.some(b => b.toLowerCase() === str(o.diet).toLowerCase())){   // 식이 'SD' 같은 단독 입력 → 기본형
+      o.dietb = DIET_BASE.find(b => b.toLowerCase() === str(o.diet).toLowerCase()); o.diet = "";
+    }
     return o;
   }
   // 이전 한글 버튼 값 → 의학용어 (발열은 버림)
   const SX_OLD = { "통증":"Pain", "복통":"Pain", "기침·가래":"URI", "호흡곤란":"dyspnea", "오심·구토":"N/V", "어지럼":"dizziness",
                    "설사":"diarrhea", "변비":"constipation", "부종":"edema", "불면":"insomnia", "배뇨곤란":"dysuria" };
   const sxList = o => [...new Set((str(o.sx) ? str(o.sx).split(",") : []).map(x => SX_OLD[x] || x).filter(x => SX.includes(x)))];
-  // 전체탭 한 줄: c/o Pain(Rt knee) NRS 5, URI, 직접 쓴 호소
+  // 전체탭 한 줄: Rt knee pain NRS 5, URI, 직접 쓴 호소들
   function sxSummary(o){
-    const a = sxList(o).map(x => x === "Pain" ? "Pain" + (str(o.psite) ? `(${str(o.psite)})` : "") + (str(o.nrs) ? " NRS " + str(o.nrs) : "") : x);
+    const a = sxList(o).map(x => x === "Pain" ? (str(o.psite) ? str(o.psite) + " pain" : "Pain") + (str(o.nrs) ? " NRS " + str(o.nrs) : "") : x);
+    (o.sxl || []).forEach(r => { if (str(r.t)) a.push(str(r.t)); });
     if (str(o.sxt)) a.push(str(o.sxt).replace(/\n/g, " / "));
     return a.join(", ");
   }
@@ -564,46 +604,57 @@
   function vsTpl(o){
     const vl = (l, k) => `<span class="vsl qt${o[k] ? " hl" : ""}" data-qt="${k}"><i>${l}</i></span>`;
     const q = +o.vsq && +o.vsq !== 8 ? `<span class="vsq qt" data-qt="vsq">q${+o.vsq}hr</span>` : `<span class="vsq qt xoff" data-qt="vsq">q8</span>`;
-    return `<span class="vstpl">${q}${vl("SBP","bp")}/${vl("DBP","bp")}-${vl("HR","hr")}-${vl("RR","rr")}-${vl("BT","bpr")}`
+    const mm = `<span class="qt vsm${o.m ? "" : " xoff"}" data-qt="m">M</span>`;
+    return `<span class="vstpl">${q}${mm}${vl("SBP","bp")}/${vl("DBP","bp")}-${vl("HR","hr")}-${vl("RR","rr")}-${vl("BT","bpr")}`
       + (o.s ? `-(${vl("SpO2","s")})` : `<span class="qt xoff" data-qt="s">-(SpO2)</span>`)
       + (o.b ? ` [${vl("BST" + (str(o.bn) ? " " + esc(str(o.bn)) : ""), "b")}]` : ` <span class="qt xoff" data-qt="b">[BST]</span>`) + `</span>`;
   }
   // 위험(낙상·욕창·통증·신체·DNR) + 알러지·격리 + 약 글자: 꺼진 건 화면에만 흐리게, 눌러서 켬
   function riskMedHTML(o){
     const t = (s, hi) => `<span class="t${hi ? " hi" : ""}">${esc(s)}</span>`;
-    let h = RISKS.map(([k, l]) => o[k] ? `<span class="t hi qt" data-qt="${k}">${l}</span>` : `<span class="qt xoff rk" data-qt="${k}">${l}</span>`).join("");
-    if (str(o.allergy)) h += t("알러지 " + str(o.allergy), 1);
-    if (str(o.iso)) h += t("격리 " + str(o.iso), 1);
-    h += `<span class="msep"></span>` + MED_TYPES.map(ty => {
+    // 켜진 것(위험·알러지·격리·약)을 앞에 빈칸 없이, 꺼진 것은 뒤에 흐리게(화면만, 인쇄 땐 빠짐)
+    const offR = [];
+    let h = RISKS.map(([k, l]) => { if (o[k]) return `<span class="t hi qt" data-qt="${k}">${l}</span>`; offR.push(`<span class="qt xoff mx rk" data-qt="${k}">${l}</span>`); return ""; }).join("");
+    if (str(o.allergy)) h += t(str(o.allergy) + " 알러지", 1);
+    if (str(o.iso)) h += t(str(o.iso) + " 격리", 1);
+    // 약: 켜진 글자를 빈칸 없이 앞으로 붙이고, 꺼진 건 뒤에 흐리게(화면만, 인쇄 땐 아예 빠짐)
+    const on = [], off = [];
+    MED_TYPES.forEach(ty => {
       const a = (o.med && Array.isArray(o.med[ty]) && o.med[ty].length) ? o.med[ty] : [0];
-      return a.map((v, k) => (+v > 0 && +v <= 3) ? `<span class="medc m${+v}" data-med="${ty}:${k}">${ty}</span>` : `<span class="medc xoff" data-med="${ty}:${k}">${ty}</span>`).join("");
-    }).join("");
+      a.forEach((v, k) => (+v > 0 && +v <= 3 ? on : off).push(+v > 0 && +v <= 3
+        ? `<span class="medc m${+v}" data-med="${ty}:${k}">${ty}</span>` : `<span class="medc xoff mx" data-med="${ty}:${k}">${ty}</span>`));
+    });
+    const pca = +o.pca || 0;
+    (pca ? on : off).push(`<span class="medc pca p${pca}" data-pca="1">${["PCA","iv PCA","epi PCA"][pca]}</span>`.replace('class="medc pca p0"', 'class="medc pca xoff mx"'));
+    (o.pat ? on : off).push(o.pat ? `<span class="medc pat" data-pat="1">Pat</span>` : `<span class="medc xoff mx" data-pat="1">Pat</span>`);
+    h += on.join("") + `<span class="msep mx"></span>` + offR.join("") + off.join("");
     return h;
   }
   function tagsHTML(o){
     const t = (s, hi) => `<span class="t${hi ? " hi" : ""}">${esc(s)}</span>`;
     let h = "";
-    if (str(o.diet)) h += t(str(o.diet), /npo/i.test(o.diet));
+    const dt = dietText(o);
+    if (dt) h += t(dt, o.dietb === "NPO" || /npo/i.test(o.diet || ""));
     if (str(o.o2)) h += t("O2 " + str(o.o2));
     (o.lines || []).filter(l => str(l.t)).forEach(l => {
       const d = lineDays(l);
       const sm = lineSummary(l);
       h += t(str(l.t) + (sm ? " " + sm : "") + (d !== null ? " D" + d : ""), isIV(l) && d !== null && d >= IV_DUE);
     });
-    const aids = aidList(o);
-    h += aids.length ? `<span class="t" data-aidpick="1">${esc(aids.join(", ") + (str(o.aidm) ? ` (${str(o.aidm)})` : ""))}</span>`
+    const aids = o.aids || [];
+    h += aids.length ? `<span class="t" data-aidpick="1">${esc(aids.map(aidText).join(", "))}</span>`
                      : `<span class="t xoff" data-aidpick="1">+보조기</span>`;
     return h;
   }
   // V/S 외 토글: 자리 고정(I/O defe | L U E R | m), 꺼진 건 화면에만 흐리게 → 전체탭에서 바로 눌러 켬
-  const QT_GROUPS = [["io","defe"], ["lab","ua","ekg","rad"], ["m"]];
+  const QT_GROUPS = [["io","defe"], ["lab","ua","ekg","rad","sp","st","nd"]];
   const tgLabel = k => (TOGGLES.find(x => x && x[0] === k) || [k, k])[1];
   const togglesHTML = o => QT_GROUPS.map(g => g.map(k => `<span class="qt${o[k] ? "" : " xoff"}" data-qt="${k}">${tgLabel(k)}</span>`).join("")).join(`<span class="sep"></span>`);
   function blockHTML(o, i){
     const dc = +o.dc || 0;
     const dcTxt = dc ? `<span class="dc${dc === 2 ? " big" : ""}">${esc(fmtMD(o.dcd))}${wdayOf(o.dcd)} <b>d/c</b></span>` : "";
     const as = str(o.age) + (o.sex ? "/" + o.sex : "");
-    const sub = [esc(o.dept || ""), esc(as), hdOf(o), podOf(o)].filter(Boolean).join(" · ");
+    const sub = [esc((o.dept || "") + (o.dept ? str(o.dno) : "")), esc(as), hdOf(o), podOf(o)].filter(Boolean).join(" · ");
     const name = str(o.name) ? esc(o.name) : `<span class="ph">${filled(o) ? "이름" : "+"}</span>`;
     const items = [];
     (o.todo || []).forEach((r, j) => { if (str(r.t)) items.push(`<span class="ti${r.c ? " done" : ""}" data-ti="${j}"><span style="${todoStyle(r)}">${esc(r.t)}</span><span class="ck" data-tck="${j}">${r.c ? "(+)" : "(   )"}</span></span>`); });
@@ -623,7 +674,8 @@
         <div class="ln ln1">${str(o.dx) ? esc(o.dx).replace(/\n/g, " / ") : ""}${str(o.pmhx) ? ` <small>(${esc(o.pmhx)})</small>` : ""}${sxSummary(o) ? `<span class="co">${esc(sxSummary(o))}</span>` : ""}</div>
         <div class="ln ln2">${riskMedHTML(o)}</div>
         <div class="ln ln2b">${tagsHTML(o)}</div>
-        <div class="ln ln3"><span class="tgs">${togglesHTML(o)}</span>${vsTpl(o)}</div>
+        <div class="ln ln3"><span class="tgs">${togglesHTML(o)}</span></div>
+        <div class="ln ln4">${vsTpl(o)}</div>
       </div></td>
       <td class="c-todo"><div class="todobox">${items.join("")}<span class="tadd" data-tadd="1" title="할 일 추가">+</span></div></td>
     </tr>`;
@@ -645,6 +697,7 @@
     // 13명 이하 1장, 넘으면 2장에 반씩 (공통 줄은 1장 맨 위)
     const n1 = count <= PER_PAGE ? count : Math.ceil(count / 2);
     const pages = count <= PER_PAGE ? [[0, count]] : [[0, n1], [n1, count]];
+    P.forEach(normPatient);
     $("#sheets").innerHTML = pages.map(([a, z], pg) => `<div class="sheet"><table class="form">
         <colgroup><col style="width:2.4cm"><col style="width:6.9cm"><col style="width:7.46cm"></colgroup>
         <tbody>${pg === 0 ? wrow : ""}${P.slice(a, z).map((o, k) => blockHTML(o, a + k)).join("")}</tbody></table></div>`).join("");
@@ -666,9 +719,10 @@
     document.querySelectorAll("#sheets .nm-top").forEach(el => fitWidth(el, 7, 5));
     document.querySelectorAll("#sheets .nm-sub").forEach(el => fitWidth(el, 7, 5));
     document.querySelectorAll("#sheets .ln1").forEach(el => fitWidth(el, 9, 5.5));
-    document.querySelectorAll("#sheets .ln2").forEach(el => fitWidth(el, 7.5, 5));
+    document.querySelectorAll("#sheets .ln2").forEach(el => fitHeight(el, 7.5, 5));
     document.querySelectorAll("#sheets .ln2b").forEach(el => fitHeight(el, 7.5, 5));
-    document.querySelectorAll("#sheets .ln3").forEach(el => fitWidth(el, 8, 5));
+    document.querySelectorAll("#sheets .ln3").forEach(el => fitWidth(el, 7.5, 5));
+    document.querySelectorAll("#sheets .ln4").forEach(el => fitWidth(el, 8, 5));
     document.querySelectorAll("#sheets .todobox").forEach(el => fitHeight(el, 8, 5));
     $("#cntLabel").textContent = count + "명";
     scaleToFit();
@@ -695,6 +749,8 @@
       const a = (Array.isArray(o.med[ty]) && o.med[ty].length) ? o.med[ty] : [0];
       a[+k] = ((+a[+k] || 0) + 1) % 4; o.med[ty] = a; renderSheet(); return;
     }
+    if (e.target.closest("[data-pca]")){ o.pca = ((+o.pca || 0) + 1) % 3; renderSheet(); return; }   // iv PCA → epi PCA → 끔
+    if (e.target.closest("[data-pat]")){ o.pat = o.pat ? 0 : 1; renderSheet(); return; }
     const ap = e.target.closest("[data-aidpick]");
     if (ap){ const r = ap.getBoundingClientRect(); openAidMenu(r.left, r.bottom + 2, i); return; }
     if (qt){                                   // 전체탭에서 바로 토글
@@ -787,8 +843,7 @@
         e.stopPropagation();                   // 다시 그린 버튼은 '바깥 클릭'으로 오인되므로 여기서 멈춤
         const b = e.target.closest("button"); if (!b) return;
         if (b.dataset.close){ aidEl.hidden = true; return; }
-        const o = P[aidIdx], l = aidList(o), a = b.dataset.aid;
-        o.aid = AIDS.filter(z => z === a ? !l.includes(a) : l.includes(z)).join(",");
+        aidToggle(P[aidIdx], b.dataset.aid);
         renderSheet(); fillAid();
       });
       document.body.appendChild(aidEl);
@@ -799,8 +854,13 @@
     aidEl.style.left = Math.max(4, Math.min(x, window.innerWidth - aidEl.offsetWidth - 4)) + "px";
     aidEl.style.top  = Math.max(4, Math.min(y, window.innerHeight - aidEl.offsetHeight - 4)) + "px";
   }
+  function aidToggle(o, a){
+    o.aids = o.aids || [];
+    const k = o.aids.findIndex(x => x.t === a);
+    if (k >= 0) o.aids.splice(k, 1); else { o.aids.push({ t:a }); aidSort(o.aids); }
+  }
   function fillAid(){
-    const l = aidList(P[aidIdx]);
+    const l = (P[aidIdx].aids || []).map(x => x.t);
     aidEl.innerHTML = `<div class="cm-row" style="flex-wrap:wrap; max-width:260px">${AIDS.map(a => `<button data-aid="${a}" class="${l.includes(a) ? "on" : ""}">${a}</button>`).join("")}</div>
       <div class="cm-row"><button data-close="1">닫기</button></div>`;
   }
@@ -892,6 +952,7 @@
     return d === null ? "" : `<span class="calc${isIV(l) && d >= IV_DUE ? " due" : ""}">D${d}</span>`;
   }
   function renderEd(){
+    normPatient(cur());
     const o = cur(), dc = +o.dc || 0;
     if (renderEd._idx !== edIdx){ edLinePick = false; renderEd._idx = edIdx; }
     const lin = (j, p, ph, cls, extra) => `<input id="l-${j}-${p}" data-list="lines" data-j="${j}" data-p="${p}" value="${esc(o.lines[j][p])}" placeholder="${ph || ""}" class="${cls || ""}" autocomplete="off" ${extra || ""}>`;
@@ -919,18 +980,25 @@
         <button class="x" data-del="cons" data-j="${j}" title="삭제">×</button></div>`).join("");
     const q = +o.vsq || 8;
     const qChip = `<span class="chip q${q !== 8 ? " alt" : ""}" data-vsq="1" title="V/S 간격 — 누를 때마다 q8→q4→q2→q1">q${q}hr</span>`;
-    const tg = TOGGLES.map(x => !x ? `<span class="gap"></span>`
-      : x[0] === "bp" ? qChip + chip("bp", "BP")
-      : x[0] === "b" ? `${chip("b", "B*")}<input id="f-bn" data-f="bn" class="bn" value="${esc(o.bn)}" inputmode="numeric" autocomplete="off">`
-      : chip(x[0], x[1])).join("");
+    // 체크: I/O defe / q8hr M BP HR RR T S B*  ⏎  L U E R SP ST ND
+    const tg = chip("io", "I/O") + chip("defe", "defe") + `<span class="slash">/</span>` + qChip
+      + ["m","bp","hr","rr","bpr","s"].map(k => chip(k, tgLabel(k))).join("")
+      + `${chip("b", "B*")}<input id="f-bn" data-f="bn" class="bn" value="${esc(o.bn)}" inputmode="numeric" autocomplete="off">`
+      + `<span class="brk"></span>` + ["lab","ua","ekg","rad","sp","st","nd"].map(k => chip(k, tgLabel(k))).join("");
+    const sxl = (o.sxl || []).map((r, j) => `<div class="li sxi">
+        <input id="x-${j}" data-list="sxl" data-j="${j}" data-p="t" value="${esc(r.t)}" placeholder="호소 (Enter: 다음 줄)" autocomplete="off" enterkeyhint="next">
+        <button class="x" data-del="sxl" data-j="${j}" title="삭제">×</button></div>`).join("");
+    const aidRows = (o.aids || []).map((a, k) => `<label class="lbl"><span class="aidn">${esc(a.t)}</span>
+        <input id="a-${k}" data-list="aids" data-j="${k}" data-p="s" value="${esc(a.s)}" placeholder="부위 (Lt long leg …)" autocomplete="off"></label>`).join("");
+    const dm = dietMods(o);
     $("#edCard").innerHTML = `
       <div class="hdr">
         ${inp("bed", "병실", 'class="bed"')}
         ${inp("name", "이름", 'class="nm"')}
         <div class="row3">${inp("age", "나이", 'inputmode="numeric"')}
           <span class="seg"><button data-set="sex" data-v="M" class="${o.sex === "M" ? "on" : ""}">M</button><button data-set="sex" data-v="F" class="${o.sex === "F" ? "on" : ""}">F</button></span>
-          <select id="f-dept" data-f="dept" class="dsel"><option value="">과</option>${DEPTS.map(([c, k]) => `<option value="${c}"${o.dept === c ? " selected" : ""}>${c} ${k}</option>`).join("")}</select></div>
-        <label class="lbl" style="grid-column:1/-1"><span>주치의</span>${inp("doc", "")}</label>
+          <select id="f-dept" data-f="dept" class="dsel"><option value="">과</option>${DEPTS.map(([c, k]) => `<option value="${c}"${o.dept === c ? " selected" : ""}>${c} ${k}</option>`).join("")}</select>
+          ${inp("dno", "", 'inputmode="numeric" class="dno" title="몇 과 (예: 3 → OS3)"')}</div>
       </div>
       <div class="sec"><div class="k">진단</div><div class="v">${ta("dx", "Dx / C.C.")}${inp("pmhx", "PMHx (HTN, DM …)")}
         <div class="pair"><label class="lbl"><span>입원</span>${inp("adm", "0901", 'inputmode="decimal"')}<span class="calc" id="calc-hd">${hdOf(o)}</span></label>
@@ -940,18 +1008,22 @@
         <div class="chips">${sxButtons(o).map(x => `<span class="chip${sxList(o).includes(x) ? " on" : ""}" data-sx="${x}">${esc(x)}</span>`).join("")}</div>
         ${o.dept ? "" : `<div class="ed-help">과를 고르면 그 과에서 자주 보는 증상 버튼이 앞에 추가돼요</div>`}
         ${sxList(o).includes("Pain") ? `<div class="pair"><label class="lbl"><span>Pain 부위</span>${inp("psite", "")}</label><label class="lbl"><span>NRS</span>${inp("nrs", "0-10", 'inputmode="numeric"')}</label></div>` : ""}
-        ${ta("sxt", "호소 직접 입력 (언제부터, 양상 …)")}</div></div>
+        ${sxl}<button class="addbtn" data-add="sxl">+ 호소 직접 입력</button></div></div>
       <div class="sec"><div class="k">위험</div><div class="v">
         <div class="pair stack"><label class="lbl"><span>알러지</span>${inp("allergy", "없으면 비움")}</label><label class="lbl"><span>격리</span>${inp("iso", "VRE, CRE …")}</label></div>
         <div class="chips">${RISKS.map(([k, l]) => chip(k, l, 1)).join("")}</div></div></div>
       <div class="sec"><div class="k">상태</div><div class="v">${ta("st", "의식, 이상 V/S …")}
         <label class="lbl"><span>O2</span>${inp("o2", "NC 2L")}</label>
-        <div class="pair"><label class="lbl"><span>식이</span>${inp("diet", "", 'list="dl-diet"')}</label><label class="lbl"><span>활동</span>${inp("act", "", 'list="dl-act"')}</label></div></div></div>
+        <div class="lbl"><span>식이</span><span class="seg sm">${DIET_BASE.map(b => `<button data-dietb="${b}" class="${o.dietb === b ? "on" : ""}">${b}</button>`).join("")}</span></div>
+        <div class="chips">${DIET_MOD.map(m => `<span class="chip${dm.includes(m) ? " on" : ""}" data-dietm="${m}">${m}</span>`).join("")}<span class="ed-help" style="align-self:center">${dm.length ? "" : "선택 안 하면 일반"}</span></div>
+        <label class="lbl"><span>식이 기타</span>${inp("diet", "직접 입력")}</label>
+        <label class="lbl"><span>활동</span>${inp("act", "", 'list="dl-act"')}</label></div></div>
       <div class="sec"><div class="k">라인</div><div class="v">${lines}<button class="addbtn" data-linepick="1">${edLinePick ? "닫기" : "+ 라인·튜브"}</button>${lpick}</div></div>
       <div class="sec"><div class="k">보조기</div><div class="v">
-        <div class="chips">${AIDS.map(a => `<span class="chip${aidList(o).includes(a) ? " on" : ""}" data-aid="${a}">${a}</span>`).join("")}</div>
-        ${aidList(o).length ? `<label class="lbl"><span>부위</span>${inp("aidm", "Lt LE, Rt wrist …")}</label>` : ""}</div></div>
+        <div class="chips">${AIDS.map(a => `<span class="chip${(o.aids || []).some(x => x.t === a) ? " on" : ""}" data-aid="${a}">${a}</span>`).join("")}</div>
+        ${aidRows}</div></div>
       <div class="sec"><div class="k">약</div><div class="v"><div class="mzone" id="mz">${medHTML(o.med)}</div>
+        <div class="chips"><span class="chip pcac p${+o.pca || 0}" data-pca="1">${["PCA","iv PCA","epi PCA"][+o.pca || 0]}</span><span class="chip patc${o.pat ? " on" : ""}" data-pat="1">Pat</span></div>
         <div class="ed-help">${MED_TYPES.map(t => t + " " + MED_NAMES[t]).join(" · ")} — 탭: 경구(초록)→주사(파랑)→기타(노랑)→끔 · 길게: 추가 · 두 번 탭: 삭제</div>
         ${inp("mednote", "약 메모 (ceftriaxone D3 …)")}</div></div>
       <div class="sec"><div class="k">체크</div><div class="v"><div class="tgrid">${tg}</div></div></div>
@@ -1021,7 +1093,13 @@
     if (fb){ const r = fb.getBoundingClientRect(); ctxJustOpened = true; setTimeout(() => ctxJustOpened = false, 0);
       openCtx(r.left - 150, r.bottom + 4, edIdx, +fb.dataset.tfmt); return; }
     const ab = t.closest("[data-aid]");
-    if (ab){ const l = aidList(o), a = ab.dataset.aid; o.aid = AIDS.filter(z => z === a ? !l.includes(a) : l.includes(z)).join(","); rerenderEd(); return; }
+    if (ab){ aidToggle(o, ab.dataset.aid); rerenderEd(); return; }
+    if (t.closest("[data-pca]")){ o.pca = ((+o.pca || 0) + 1) % 3; rerenderEd(); return; }
+    if (t.closest("[data-pat]")){ o.pat = o.pat ? 0 : 1; rerenderEd(); return; }
+    const db = t.closest("[data-dietb]");
+    if (db){ o.dietb = o.dietb === db.dataset.dietb ? "" : db.dataset.dietb; rerenderEd(); return; }
+    const dmb = t.closest("[data-dietm]");
+    if (dmb){ const l = dietMods(o), x = dmb.dataset.dietm; o.dietm = DIET_MOD.filter(y => y === x ? !l.includes(x) : l.includes(y)).join(","); rerenderEd(); return; }
     const tg = t.closest("[data-tg]");
     if (tg){
       const k = tg.dataset.tg;
@@ -1069,7 +1147,7 @@
     if (add){
       const k = add.dataset.add; o[k] = o[k] || []; o[k].push({});
       const j = o[k].length - 1;
-      rerenderEd(k === "todo" ? `t-${j}` : `c-${j}-t`); return;
+      rerenderEd(k === "todo" ? `t-${j}` : k === "sxl" ? `x-${j}` : `c-${j}-t`); return;
     }
     const del = t.closest("[data-del]");
     if (del){ (o[del.dataset.del] || []).splice(+del.dataset.j, 1); rerenderEd(); return; }
@@ -1082,11 +1160,11 @@
   });
   // 할 일: Enter → 다음 줄 추가, 빈 줄 Backspace → 삭제
   $("#edCard").addEventListener("keydown", e => {
-    const t = e.target; if (t.dataset.list !== "todo") return;
+    const t = e.target, L = t.dataset.list; if (L !== "todo" && L !== "sxl") return;   // 할 일 · 증상 직접 입력
     if (e.isComposing || e.keyCode === 229) return;   // 한글 조합 확정용 Enter는 무시
-    const o = cur(), j = +t.dataset.j;
-    if (e.key === "Enter"){ e.preventDefault(); o.todo.splice(j + 1, 0, {}); rerenderEd(`t-${j + 1}`); }
-    else if (e.key === "Backspace" && !t.value){ e.preventDefault(); o.todo.splice(j, 1); rerenderEd(j > 0 ? `t-${j - 1}` : null); }
+    const o = cur(), j = +t.dataset.j, pre = L === "todo" ? "t-" : "x-";
+    if (e.key === "Enter"){ e.preventDefault(); o[L].splice(j + 1, 0, {}); rerenderEd(pre + (j + 1)); }
+    else if (e.key === "Backspace" && !t.value){ e.preventDefault(); o[L].splice(j, 1); rerenderEd(j > 0 ? pre + (j - 1) : null); }
   });
 
   /* 약 A P U: 탭=색 순환, 길게=같은 글자 추가, 두 번 탭=삭제(종류별 마지막 1개는 끔으로) */
@@ -1291,7 +1369,7 @@
     if (!list){ syncMsg("인계장 데이터를 찾을 수 없어요.", "err"); return; }
     list = list.map(o => (o && typeof o === "object") ? o : {});
     if (data.v !== 2) list = list.map(migrate);          // 이전 버전 코드 → 새 형식
-    list.forEach(normDept);
+    list.forEach(normDept); list.forEach(normPatient);
     const n = list.filter(filled).length;
     pending = { data, list };
     syncMsg(`불러온 데이터: <b>${n}명</b> 기재${Array.isArray(data.w) && data.w.length ? ", 병동 공통 할 일 있음" : ""}. 지금 화면을 덮어쓸까요?
