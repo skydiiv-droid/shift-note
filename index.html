@@ -1484,6 +1484,8 @@
     const NRS = "NRS 2";                                               // 차팅은 2점 고정
 
     L.push("Nr's rounded.");
+    if (o.dietb === "NPO" || /npo/i.test(o.diet || "")) L.push("NPO state.");
+    else if (o.dietb === "SOW" || /\bsow\b/i.test(o.diet || "")) L.push("SOW state.");
     // ── V/S ──
     if (o.m) L.push("EKG, SpO2 thynC monitoring kept.");
     const full = +o.vsq && +o.vsq !== 8;
@@ -1590,7 +1592,6 @@
     if (isoTypes(o).length) L.push([str(o.iso), isoTypes(o).map(x => ISO_CHART[x]).join(", "), "적용 중."].filter(Boolean).join(" "));
     else if (str(o.iso)) L.push(isoLine(str(o.iso)));
     L.push("처방 수액 점적 중.");
-    if (o.dietb === "NPO" || /npo/i.test(o.diet || "")) L.push("NPO 유지 중.");
     if (o.sore) L.push("position change, back care done.");
     const adl = ["환의 교체", "개인위생"];
     if (brain && o.nss && o.mpg !== undefined && o.mpg !== "" && +o.mpg < 5) adl.push("배변", "배뇨", "침상 밖 이동");   // 편마비 등 (식이섭취는 자동으로 안 넣음)
