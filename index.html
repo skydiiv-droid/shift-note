@@ -1522,8 +1522,8 @@
     const dysp = has("dyspnea") ? "mild dyspnea ck." : "dyspnea none.";
     if (str(o.o2)){
       const mm = str(o.o2).match(/(\d+(?:\.\d+)?)\s*L/i);
-      L.push(J(mm ? `O2 ${mm[1]}L/min via n-p state.` : `O2 ${str(o.o2)} state.`, o.m && !str(o.vsp) ? "" : `SpO2 ${v("vsp")}%, ${dysp}`));   // 모니터링 중이고 값 없으면 SpO2 줄 생략
-    } else if (o.s) L.push(`room air sat ${v("vsp")}%, ${dysp}`);
+      L.push(`${mm ? `O2 ${mm[1]}L/min via n-p` : `O2 ${str(o.o2)}`} state, ${dysp}`);
+    } else L.push(`room air state, ${dysp}`);
     if (!full && o.bpr) L.push(`BT ${v("vbt")}, chilling sign none.`);
 
     // ── 공통 조각 ──
@@ -1617,7 +1617,6 @@
       .forEach(x => L.push(x === "edema" ? [str(o.edsite), str(o.edg) ? "pitting edema G" + o.edg : "edema", "ck."].filter(Boolean).join(" ") : SX_LINE[x] || `${x} ck.`));
     (o.sxl || []).map(r => str(r.t)).filter(Boolean).forEach(t => L.push(/[.。]$/.test(t) ? t : t + "."));
     if (!brain && o.szp) L.push("seizure kit prep state.");
-    if (has("dyspnea") && !str(o.o2) && !o.s) L.push("mild dyspnea ck.");
     // ── 튜브(Foley 등) → 수액 → NPO → 욕창 → ADL → 낙상 → 끝 ──
     lines.filter(l => !isIV(l) && !isDrainNP(l) && !/^(pcd|chest tube)$/i.test(str(l.t)) && !(o.dept === "URO" && /^foley$/i.test(str(l.t))))
       .forEach(l => L.push(tubeLine(l)));
