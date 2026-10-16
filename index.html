@@ -440,7 +440,7 @@
   }
   // 체크 토글 (이전 버전과 같은 키): 켜진 것만 전체 인계장에 찍힘
   const TOGGLES = [["io","I/O"],["defe","defe"],["m","M"],["bp","BP"],["hr","HR"],["rr","RR"],["bpr","T"],["s","S"],["b","B*"],
-                   ["lab","L"],["ua","U"],["ekg","E"],["rad","R"],["sp","SP"],["st","ST"],["nd","ND"]];
+                   ["lab","L"],["ua","U"],["ekg","E"],["rad","R"],["sp","SP"],["st","ST"],["nd","ND"],["ac","A.C."],["bw","B.W."]];   // SP sputum · ST stool · ND nasal discharge · A.C. 복부둘레 · B.W. 체중
   // 진료과 (병동 업무 매뉴얼 wiki/99_부록/부서_약어.md 기준)
   const DEPTS = [["OS","정형외과"],["NS","신경외과"],["NR","신경과"],["GS","외과"],["GI","소화기내과"],["PU","호흡기내과"],["AM","호흡기알레르기내과"],
                  ["CV","심장내과"],["NE","신장내과"],["IF","감염내과"],["URO","비뇨기과"],["OBGY","산부인과"],["ED","내분비내과"],["PED","소아과"],["DT","치과"]];
@@ -699,7 +699,7 @@
     return h;
   }
   // V/S 외 토글: 자리 고정(I/O defe | L U E R | m), 꺼진 건 화면에만 흐리게 → 전체탭에서 바로 눌러 켬
-  const QT_GROUPS = [["io","defe"], ["lab","ua","ekg","rad","sp","st","nd"]];
+  const QT_GROUPS = [["io","defe"], ["lab","ua","ekg","rad","sp","st","nd","ac","bw"]];
   const tgLabel = k => (TOGGLES.find(x => x && x[0] === k) || [k, k])[1];
   const togglesHTML = o => QT_GROUPS.map(g => g.map(k => `<span class="qt${o[k] ? "" : " xoff"}" data-qt="${k}">${tgLabel(k)}</span>`).join("")).join(`<span class="sep"></span>`)
     + `<span class="sep"></span>` + RISKS.filter(([k]) => o[k]).map(([k, l]) => `<span class="t hi qt" data-qt="${k}">${l}</span>`).join("");
@@ -1074,7 +1074,7 @@
     const tg = chip("io", "I/O") + chip("defe", "defe") + `<span class="slash">/</span>` + qChip
       + ["m","bp","hr","rr","bpr","s"].map(k => chip(k, tgLabel(k))).join("")
       + `${chip("b", "B*")}<input id="f-bn" data-f="bn" class="bn" value="${esc(o.bn)}" inputmode="numeric" autocomplete="off">`
-      + `<span class="brk"></span>` + ["lab","ua","ekg","rad","sp","st","nd"].map(k => chip(k, tgLabel(k))).join("");
+      + `<span class="brk"></span>` + ["lab","ua","ekg","rad","sp","st","nd","ac","bw"].map(k => chip(k, tgLabel(k))).join("");
     const sores = (o.sores || []).map((r, j) => `<div class="li sorei"><span class="lt">욕창</span>
         <input id="so-${j}" data-list="sores" data-j="${j}" data-p="s" value="${esc(r.s)}" placeholder="부위 (coccyx, Rt heel …)" autocomplete="off" enterkeyhint="next">
         <span class="seg sm">${["1","2","3","4"].map(g => `<button data-sog="${j}" data-v="${g}" class="${str(r.g) === g ? "on" : ""}">G${g}</button>`).join("")}</span>
