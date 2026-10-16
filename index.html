@@ -283,6 +283,9 @@
   .sec > .v > .lbl{flex-wrap:wrap; row-gap:4px}   /* 버튼 줄이 길면 다음 줄로 */
   .vsin{display:flex; align-items:center; gap:3px; flex-wrap:wrap; font-size:13px; color:#64748b}
   .card .vsin input{width:3.2em; text-align:center; padding:3px 1px}
+  .li.sorei{grid-template-columns:auto minmax(0,1fr) auto 1.4em}
+  .li.dri{grid-template-columns:auto minmax(0,1fr) 1.4em}
+  .li .lt{font-size:12px; color:#475569}
   .li.exr{grid-template-columns:minmax(0,1fr) 1.8em; align-items:start}
   .x{border:0; background:transparent; color:#94a3b8; font-size:20px; cursor:pointer; padding:0; line-height:1}
   .x:hover{color:#dc2626}
@@ -420,6 +423,7 @@
   const AIDS = ["splint","cast","EB rolling","brace","C-collar","binder","arm sling","velpeau band","abduction pillow","AES","IPC","elevation","ice bag","air matt"];
   const AID_OLD = { "sling":"arm sling", "elastic stocking":"AES" };
   const aidSort = a => a.sort((x, y) => AIDS.indexOf(x.t) - AIDS.indexOf(y.t));
+  const soreText = r => [str(r.s), str(r.g) && "G" + r.g, "sore"].filter(Boolean).join(" ");   // coccyx G2 sore
   const aidText = a => (str(a.s) ? str(a.s) + " " : "") + a.t;
   // 식이: 기본형 하나 + 치료식(여러 개, 안 고르면 일반) + 직접 입력
   const DIET_BASE = ["RD","SD","LD","SOW","NPO"];
@@ -484,6 +488,14 @@
     if (!Array.isArray(o.aids) && (str(o.aid) || str(o.aidm))){           // 보조기: aid(콤마)+aidm → [{t, s}]
       o.aids = str(o.aid).split(",").map(x => AID_OLD[x] || x).filter(x => AIDS.includes(x)).map(t => ({ t, s: str(o.aidm) }));
       delete o.aid; delete o.aidm;
+    }
+    if (Array.isArray(o.wd)){                                              // 상처·욕창 한 줄 입력 → 욕창(부위+grade) / dressing(부위)
+      o.wd.map(r => str(r.t)).filter(Boolean).forEach(t => {
+        const m = t.match(/^(.*?)\s*G(\d)\s*sore$/i);
+        if (m){ (o.sores = o.sores || []).push({ s: m[1], g: m[2] }); o.sore = 1; }
+        else (o.dr = o.dr || []).push({ s: t });
+      });
+      delete o.wd;
     }
     if (!Array.isArray(o.sxl) && str(o.sxt)){                              // 증상 직접 입력: 한 덩어리 → 줄마다
       o.sxl = str(o.sxt).split("\n").map(t => ({ t:t.trim() })).filter(x => x.t);
@@ -679,7 +691,8 @@
       const sm = lineSummary(l);
       h += t(str(l.t) + (sm ? " " + sm : "") + (d !== null ? " D" + d : ""), isIV(l) && d !== null && d >= IV_DUE);
     });
-    (o.wd || []).filter(r => str(r.t)).forEach(r => h += t(str(r.t)));
+    if (o.sore) (o.sores || []).filter(r => str(r.s)).forEach(r => h += t(soreText(r)));
+    (o.dr || []).filter(r => str(r.s)).forEach(r => h += t(str(r.s) + " dx"));
     const aids = o.aids || [];
     h += aids.length ? `<span class="t" data-aidpick="1">${esc(aids.map(aidText).join(", "))}</span>`
                      : `<span class="t xoff" data-aidpick="1">+보조기</span>`;
@@ -1062,9 +1075,13 @@
       + ["m","bp","hr","rr","bpr","s"].map(k => chip(k, tgLabel(k))).join("")
       + `${chip("b", "B*")}<input id="f-bn" data-f="bn" class="bn" value="${esc(o.bn)}" inputmode="numeric" autocomplete="off">`
       + `<span class="brk"></span>` + ["lab","ua","ekg","rad","sp","st","nd"].map(k => chip(k, tgLabel(k))).join("");
-    const wds = (o.wd || []).map((r, j) => `<div class="li sxi">
-        <input id="w-${j}" data-list="wd" data-j="${j}" data-p="t" value="${esc(r.t)}" placeholder="coccyx G2 sore, Rt inguinal bullae …" autocomplete="off" enterkeyhint="next">
-        <button class="x" data-del="wd" data-j="${j}" title="삭제">×</button></div>`).join("");
+    const sores = (o.sores || []).map((r, j) => `<div class="li sorei"><span class="lt">욕창</span>
+        <input id="so-${j}" data-list="sores" data-j="${j}" data-p="s" value="${esc(r.s)}" placeholder="부위 (coccyx, Rt heel …)" autocomplete="off" enterkeyhint="next">
+        <span class="seg sm">${["1","2","3","4"].map(g => `<button data-sog="${j}" data-v="${g}" class="${str(r.g) === g ? "on" : ""}">G${g}</button>`).join("")}</span>
+        <button class="x" data-del="sores" data-j="${j}" title="삭제">×</button></div>`).join("");
+    const drs = (o.dr || []).map((r, j) => `<div class="li dri"><span class="lt">dressing</span>
+        <input id="dr-${j}" data-list="dr" data-j="${j}" data-p="s" value="${esc(r.s)}" placeholder="부위 (Rt inguinal bullae …)" autocomplete="off" enterkeyhint="next">
+        <button class="x" data-del="dr" data-j="${j}" title="삭제">×</button></div>`).join("");
     const sxl = (o.sxl || []).map((r, j) => `<div class="li sxi">
         <input id="x-${j}" data-list="sxl" data-j="${j}" data-p="t" value="${esc(r.t)}" placeholder="호소 (Enter: 다음 줄)" autocomplete="off" enterkeyhint="next">
         <button class="x" data-del="sxl" data-j="${j}" title="삭제">×</button></div>`).join("");
@@ -1102,7 +1119,7 @@
         <div class="lbl"><span>격리</span><span class="seg sm">${ISO_T.map(x => `<button data-isot="${x}" class="${isoTypes(o).includes(x) ? "on" : ""}">${x}</button>`).join("")}</span></div>
         ${isoTypes(o).length || str(o.iso) ? `<label class="lbl"><span>격리 상세</span>${inp("iso", "COVID-19, VRE …")}</label>` : ""}
         <div class="chips">${RISKS.map(([k, l]) => chip(k, l, 1)).join("")}</div>
-        ${wds}<button class="addbtn" data-add="wd">+ 상처·욕창 부위</button>
+        ${o.sore ? `${sores}<button class="addbtn" data-add="sores">+ 욕창 부위</button>` : ""}
         ${o.rest ? `<div class="lbl"><span>보호대</span>${RS_PARTS.map(pt => `<span class="rsp">${pt}<span class="seg sm">${["Lt","Rt","both"].map(sd => `<button data-set="rs${pt}" data-v="${sd}" class="${o["rs" + pt] === sd ? "on" : ""}">${sd}</button>`).join("")}</span></span>`).join("")}<span class="seg sm"><button data-set="rschest" data-v="1" class="${o.rschest === "1" ? "on" : ""}">chest</button></span></div>` : ""}</div></div>
       <div class="sec"><div class="k">상태</div><div class="v">${ta("st", "의식, 이상 V/S …")}
         <label class="lbl"><span>O2</span>${inp("o2", "NC 2L")}</label>
@@ -1114,7 +1131,7 @@
       <div class="sec"><div class="k">라인</div><div class="v">${lines}<button class="addbtn" data-linepick="1">${edLinePick ? "닫기" : "+ 라인·튜브"}</button>${lpick}</div></div>
       <div class="sec"><div class="k">보조기</div><div class="v">
         <div class="chips">${AIDS.map(a => `<span class="chip${(o.aids || []).some(x => x.t === a) ? " on" : ""}" data-aid="${a}">${a}</span>`).join("")}</div>
-        ${aidRows}</div></div>
+        ${aidRows}${drs}<button class="addbtn" data-add="dr">+ dressing</button></div></div>
       <div class="sec"><div class="k">약</div><div class="v"><div class="mzone" id="mz">${medHTML(o.med)}</div>
         <div class="chips"><span class="chip pcac p${+o.pca || 0}" data-pca="1">${["PCA","iv PCA","epi PCA"][+o.pca || 0]}</span><span class="chip patc${o.pat ? " on" : ""}" data-pat="1">Pat</span></div>
         <div class="ed-help">${MED_TYPES.map(t => medLabel(t) + " " + MED_NAMES[t]).join(" · ")}<br>탭: 경구(초록)→주사(파랑)→기타(노랑)→끔 · 길게: 추가 · 두 번 탭: 삭제</div>
@@ -1212,6 +1229,7 @@
         else if (v === "1"){ o.bn = ""; rerenderEd("f-bn"); return; }
         else { o.b = 0; o.bn = ""; }
       } else o[k] = o[k] ? 0 : 1;
+      if (k === "sore" && o.sore && !(o.sores || []).length){ o.sores = [{}]; rerenderEd("so-0"); return; }   // 욕창 켜면 부위 입력부터
       rerenderEd(); return;
     }
     const sxb = t.closest("[data-sx]");
@@ -1226,6 +1244,8 @@
       o.isot = (l.includes(x) ? l.filter(y => y !== x) : l.concat(x)).join(",");
       rerenderEd(); return;
     }
+    const sog = t.closest("[data-sog]");
+    if (sog){ const r = o.sores[+sog.dataset.sog]; r.g = str(r.g) === sog.dataset.v ? "" : sog.dataset.v; rerenderEd(); return; }
     const set = t.closest("[data-set]");
     if (set){ o[set.dataset.set] = o[set.dataset.set] === set.dataset.v ? "" : set.dataset.v; rerenderEd(); return; }
     const dcb = t.closest("[data-dc]");
@@ -1254,7 +1274,7 @@
     if (add){
       const k = add.dataset.add; o[k] = o[k] || []; o[k].push({});
       const j = o[k].length - 1;
-      rerenderEd(k === "todo" ? `t-${j}` : k === "sxl" ? `x-${j}` : k === "wd" ? `w-${j}` : `c-${j}-t`); return;
+      rerenderEd(k === "todo" ? `t-${j}` : k === "sxl" ? `x-${j}` : k === "sores" ? `so-${j}` : k === "dr" ? `dr-${j}` : `c-${j}-t`); return;
     }
     const del = t.closest("[data-del]");
     if (del){ (o[del.dataset.del] || []).splice(+del.dataset.j, 1); rerenderEd(); return; }
@@ -1267,9 +1287,9 @@
   });
   // 할 일: Enter → 다음 줄 추가, 빈 줄 Backspace → 삭제
   $("#edCard").addEventListener("keydown", e => {
-    const t = e.target, L = t.dataset.list; if (L !== "todo" && L !== "sxl" && L !== "wd") return;   // 할 일 · 증상 직접 입력 · 상처
+    const t = e.target, L = t.dataset.list; if (!["todo","sxl","sores","dr"].includes(L)) return;   // 할 일 · 증상 직접 입력 · 욕창 · dressing
     if (e.isComposing || e.keyCode === 229) return;   // 한글 조합 확정용 Enter는 무시
-    const o = cur(), j = +t.dataset.j, pre = L === "todo" ? "t-" : L === "wd" ? "w-" : "x-";
+    const o = cur(), j = +t.dataset.j, pre = { todo:"t-", sxl:"x-", sores:"so-", dr:"dr-" }[L];
     if (e.key === "Enter"){ e.preventDefault(); o[L].splice(j + 1, 0, {}); rerenderEd(pre + (j + 1)); }
     else if (e.key === "Backspace" && !t.value){ e.preventDefault(); o[L].splice(j, 1); rerenderEd(j > 0 ? pre + (j - 1) : null); }
   });
@@ -1601,7 +1621,8 @@
     // ── 튜브(Foley 등) → 수액 → NPO → 욕창 → ADL → 낙상 → 끝 ──
     lines.filter(l => !isIV(l) && !isDrainNP(l) && !/^(pcd|chest tube)$/i.test(str(l.t)) && !(o.dept === "URO" && /^foley$/i.test(str(l.t))))
       .forEach(l => L.push(tubeLine(l)));
-    (o.wd || []).map(r => str(r.t).replace(/[.\s]+$/, "")).filter(Boolean).forEach(t => L.push(`${t} site dx kept.`));
+    if (o.sore) (o.sores || []).filter(r => str(r.s)).forEach(r => L.push(`${soreText(r)} site dx kept.`));
+    (o.dr || []).map(r => str(r.s).replace(/[.\s]+$/, "")).filter(Boolean).forEach(t => L.push(`${t} site dx kept.`));
     if (lateIPC) push(...aesIpc());
     if (aids.some(a => a.t === "air matt")) L.push("air matt kept.");
     if (o.sore) L.push("position change, back care done.");
