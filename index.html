@@ -1580,7 +1580,7 @@
     }
     // ── 나머지 증상 → 직접 입력한 호소 (마침표 없으면 붙임) ──
     const resp = o.dept === "AM" || o.dept === "PU";                    // AM·PU: cough·sputum 항상 기록 (있음/없음)
-    if (resp && !brain) L.push(has("cough") ? "coughing seen." : "no coughing seen.", has("sputum") ? "sputum sound seen." : "no sputum seen.");
+    if (resp && !brain) L.push(has("cough") ? "coughing seen." : "no coughing seen.", has("sputum") ? "sputum sound seen." : "no sputum sound seen.");
     if (!brain) sx.filter(x => !["Pain","N/V","dyspnea","hematuria","flatus(-)"].includes(x) && !(resp && ["cough","sputum"].includes(x)) && !SMC_SX.includes(x) && !(isNSspine && NS_SX.includes(x)))
       .forEach(x => L.push(SX_LINE[x] || `${x} ck.`));
     (o.sxl || []).map(r => str(r.t)).filter(Boolean).forEach(t => L.push(/[.。]$/.test(t) ? t : t + "."));
