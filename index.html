@@ -607,6 +607,7 @@
   const LF = {
     s:   ["s",   "부위"],
     sd:  ["sd",  "부위",   ["Rt","Lt"]],
+    lb:  ["lb",  "",       ["arm","leg"]],
     g:   ["g",   "G",      ["18","20","22","24"], v => v],
     fr:  ["fr",  "Fr",     null, v => v],
     way: ["way", "way",    ["2","3"], v => v],
@@ -620,7 +621,7 @@
     memo:["memo","메모"],
   };
   const LINE_TYPES = {
-    "IV":         ["s","g"],
+    "IV":         ["sd","lb","g"],
     "PICC":       ["sd","lu"],
     "C-line":     ["sd","lu"],
     "A-line":     ["sd"],
@@ -675,6 +676,7 @@
     let h = "";
     if (str(o.allergy)) h += t(str(o.allergy) + " 알러지", 1);
     if (o.asv) h += t(o.asv + " arm save", 1);
+    h += RISKS.filter(([k]) => o[k]).map(([k, l]) => `<span class="t hi qt" data-qt="${k}">${l}</span>`).join("");
     const it = isoTypes(o);
     if (it.length) h += t(it.join("·"), 1);
     else if (str(o.iso)) h += t(str(o.iso) + " 격리", 1);
@@ -697,7 +699,7 @@
     (o.lines || []).filter(l => str(l.t)).forEach(l => {
       const d = lineDays(l);
       const sm = lineSummary(l);
-      h += t((str(l.sd) ? l.sd + " " : "") + str(l.t) + (sm ? " " + sm : "") + (d !== null ? " D" + d : ""), isIV(l) && d !== null && d >= IV_DUE);
+      h += t([str(l.sd), str(l.lb), str(l.t)].filter(Boolean).join(" ") + (sm ? " " + sm : "") + (d !== null ? " D" + d : ""), isIV(l) && d !== null && d >= IV_DUE);
     });
     if (o.sore) (o.sores || []).filter(r => str(r.s)).forEach(r => h += t(soreText(r)));
     (o.dr || []).filter(r => str(r.s)).forEach(r => h += t(str(r.s) + " dx"));
@@ -709,8 +711,7 @@
   // V/S 외 토글: 자리 고정(I/O defe | L U E R | m), 꺼진 건 화면에만 흐리게 → 전체탭에서 바로 눌러 켬
   const QT_GROUPS = [["io","defe"], ["lab","ua","ekg","rad","sp","st","nd","ac","bw"]];
   const tgLabel = k => (TOGGLES.find(x => x && x[0] === k) || [k, k])[1];
-  const togglesHTML = o => QT_GROUPS.map(g => g.map(k => `<span class="qt${o[k] ? "" : " xoff"}" data-qt="${k}">${tgLabel(k)}</span>`).join("")).join(`<span class="sep"></span>`)
-    + `<span class="sep"></span>` + RISKS.filter(([k]) => o[k]).map(([k, l]) => `<span class="t hi qt" data-qt="${k}">${l}</span>`).join("");
+  const togglesHTML = o => QT_GROUPS.map(g => g.map(k => `<span class="qt${o[k] ? "" : " xoff"}" data-qt="${k}">${tgLabel(k)}</span>`).join("")).join(`<span class="sep"></span>`);
   function blockHTML(o, i){
     const dc = +o.dc || 0;
     const dcTxt = dc ? `<span class="dc${dc === 2 ? " big" : ""}">${esc(fmtMD(o.dcd))}${wdayOf(o.dcd)} <b>d/c</b></span>` : "";
