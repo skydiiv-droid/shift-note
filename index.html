@@ -448,8 +448,8 @@
     NR:   ["motor weakness","dysarthria","dysphagia","seizure","mental change","tremor"],
     GS:   ["abd. distension","flatus(-)","oozing","anorexia"],
     GI:   ["abd. distension","melena","hematochezia","hematemesis","anorexia","dyspepsia","jaundice","edema","ascites"],
-    PU:   ["cough","sputum","hemoptysis","wheezing"],
-    AM:   ["cough","sputum","wheezing","rhinorrhea","pruritus","rash"],
+    PU:   ["cough","sputum","myalgia","sore throat","hemoptysis","wheezing"],
+    AM:   ["cough","sputum","myalgia","sore throat","wheezing","rhinorrhea","pruritus","rash"],
     IF:   ["chills","cough","sputum","wound discharge","rash"],
     CV:   ["chest discomfort","palpitation","orthopnea","edema","syncope"],
     NE:   ["edema","oliguria","pruritus","anorexia"],
@@ -1518,7 +1518,7 @@
     const NS_SX = ["numbness","tingling","motor weakness","radiating pain"];
     const isNSspine = isSpine(o), brain = isBrain(o);
 
-    const SX_LINE = { cough:"coughing seen.", sputum:"sputum sound seen.", dizziness:"mild dizziness ck.", "H/A":`H/A ${NRS} ck.` };
+    const SX_LINE = { cough:"coughing seen.", sputum:"sputum sound seen.", dizziness:"mild dizziness ck.", "H/A":`H/A ${NRS} ck.`, myalgia:`myalgia ${NRS} ck.`, "sore throat":`sore throat ${NRS} ck.` };
     if (brain){
       // ── brain: M/S → M/P → 증상 → seizure kit → pain → PCA 등 ──
       L.push(`M/S ${o.ms || "alert"} ck.`);
@@ -1577,7 +1577,9 @@
       if (!o.pca && has("N/V")) L.push("N/V ck.");
     }
     // ── 나머지 증상 → 직접 입력한 호소 (마침표 없으면 붙임) ──
-    if (!brain) sx.filter(x => !["Pain","N/V","dyspnea","hematuria","flatus(-)"].includes(x) && !SMC_SX.includes(x) && !(isNSspine && NS_SX.includes(x)))
+    const resp = o.dept === "AM" || o.dept === "PU";                    // AM·PU: cough·sputum 항상 기록 (있음/없음)
+    if (resp && !brain) L.push(has("cough") ? "coughing seen." : "no coughing seen.", has("sputum") ? "sputum seen." : "no sputum seen.");
+    if (!brain) sx.filter(x => !["Pain","N/V","dyspnea","hematuria","flatus(-)"].includes(x) && !(resp && ["cough","sputum"].includes(x)) && !SMC_SX.includes(x) && !(isNSspine && NS_SX.includes(x)))
       .forEach(x => L.push(SX_LINE[x] || `${x} ck.`));
     (o.sxl || []).map(r => str(r.t)).filter(Boolean).forEach(t => L.push(/[.。]$/.test(t) ? t : t + "."));
     if (!brain && o.szp) L.push("seizure kit prep state.");
