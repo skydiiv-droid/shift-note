@@ -425,7 +425,7 @@
   const AIDS = ["splint","cast","EB rolling","brace","C-collar","binder","arm sling","velpeau band","crutch","cast shoes","abduction pillow","AES","IPC","elevation","ice bag","air matt"];
   const AID_OLD = { "sling":"arm sling", "elastic stocking":"AES" };
   const aidSort = a => a.sort((x, y) => AIDS.indexOf(x.t) - AIDS.indexOf(y.t));
-  const restraintSite = o => ["glove","wrist","ankle"].filter(pt => o["rs" + pt]).map(pt => `${o["rs" + pt]} ${pt}`).concat(o.rschest === "1" ? ["chest"] : []).join(", ");
+  const restraintSite = o => RS_PARTS.filter(pt => o["rs" + pt]).map(pt => `${o["rs" + pt]} ${pt}`).concat(o.rschest === "1" ? ["chest"] : []).join(", ");
   const soreText = r => [str(r.s), str(r.g) && "G" + r.g, "sore"].filter(Boolean).join(" ");   // coccyx G2 sore
   const aidText = a => (str(a.s) ? str(a.s) + " " : "") + a.t;
   // 식이: 기본형 하나 + 치료식(여러 개, 안 고르면 일반) + 직접 입력
@@ -522,7 +522,8 @@
     return a.join(", ");
   }
   // 할 일 서식 (전체탭 우클릭): fc 글씨색, hl 형광펜, b 볼드
-  const todoStyle = r => [r.fc ? `color:${r.fc}` : "", r.hl ? `background:${r.hl}` : "", r.b ? "font-weight:700" : ""].filter(Boolean).join(";");
+  const COLOR_RE = /^#[0-9a-f]{3,8}$/i;                                  // 불러온 코드의 이상한 값은 무시
+  const todoStyle = r => [COLOR_RE.test(r.fc) ? `color:${r.fc}` : "", COLOR_RE.test(r.hl) ? `background:${r.hl}` : "", r.b ? "font-weight:700" : ""].filter(Boolean).join(";");
   const IV_DUE = 3;   // IV 경과일 경고 기준(일)
   // V/S 칸에 형광펜으로 표시되는 토글 (전체탭 글씨에서는 빠짐). B* = BST → V/S 끝 [BST]
   const VS_KEYS = ["bp","hr","bpr","s","rr","b"];
@@ -663,7 +664,7 @@
   /* ════════════ 전체 인계장 (A4) ════════════ */
   // V/S 칸은 전체탭에서도 눌러서 형광펜 켜고 끔 (q 간격·SpO2·BST도)
   function vsTpl(o){
-    const vl = (l, k) => `<span class="vsl qt${o[k] ? " hl" : ""}" data-qt="${k}"${o[k] && o.vsc && o.vsc[k] ? ` style="background:${o.vsc[k]}"` : ""}><i>${l}</i></span>`;
+    const vl = (l, k) => `<span class="vsl qt${o[k] ? " hl" : ""}" data-qt="${k}"${o[k] && o.vsc && COLOR_RE.test(o.vsc[k]) ? ` style="background:${o.vsc[k]}"` : ""}><i>${l}</i></span>`;
     const q = +o.vsq && +o.vsq !== 8 ? `<span class="vsq qt" data-qt="vsq">q${+o.vsq}hr</span>` : `<span class="vsq qt xoff" data-qt="vsq">q8</span>`;
     const mm = `<span class="qt vsm${o.m ? "" : " xoff"}" data-qt="m">M</span>`;
     return `<span class="vstpl">${q}${mm}${vl("SBP","bp")}/${vl("DBP","bp")}-${vl("HR","hr")}-${vl("RR","rr")}-${vl("BT","bpr")}`
@@ -1079,7 +1080,7 @@
         <button class="x" data-del="cons" data-j="${j}" title="삭제">×</button></div>`).join("");
     const q = +o.vsq || 8;
     const qChip = `<span class="chip q${q !== 8 ? " alt" : ""}" data-vsq="1" title="V/S 간격 — 누를 때마다 q8→q4→q2→q1">q${q}hr</span>`;
-    // 체크: I/O defe / q8hr M BP HR RR T S B*  ⏎  L U E R SP ST ND
+    // 체크: I/O defe / q8hr M BP HR RR T S B*  ⏎  L U E R SP ST ND A.C. B.W.
     const tg = chip("io", "I/O") + chip("defe", "defe") + `<span class="slash">/</span>` + qChip
       + ["m","bp","hr","rr","bpr","s"].map(k => chip(k, tgLabel(k))).join("")
       + `${chip("b", "B*")}<input id="f-bn" data-f="bn" class="bn" value="${esc(o.bn)}" inputmode="numeric" autocomplete="off">`
@@ -1141,7 +1142,7 @@
       <div class="sec"><div class="k">라인</div><div class="v">${lines}<button class="addbtn" data-linepick="1">${edLinePick ? "닫기" : "+ 라인·튜브"}</button>${lpick}</div></div>
       <div class="sec"><div class="k">보조기</div><div class="v">
         <div class="chips">${AIDS.map(a => `<span class="chip${(o.aids || []).some(x => x.t === a) ? " on" : ""}" data-aid="${a}">${a}</span>`).join("")}</div>
-        ${aidRows}        ${drs}<button class="addbtn" data-add="dr">+ dressing</button></div></div>
+        ${aidRows}${drs}<button class="addbtn" data-add="dr">+ dressing</button></div></div>
       <div class="sec"><div class="k">약</div><div class="v">
         <div class="lbl"><span>수액</span><span class="seg sm">${FLUIDS.map(f => `<button data-set="fl" data-v="${f}" class="${o.fl === f ? "on" : ""}">${f}</button>`).join("")}</span></div>
         <div class="mzone" id="mz">${medHTML(o.med)}</div>
@@ -1196,8 +1197,11 @@
       it[t.dataset.p] = t.value;
       if (t.dataset.list === "lines"){ const s = document.querySelector(`[data-lcalc="${t.dataset.j}"]`); if (s) s.innerHTML = lineCalc(it); }
     }
+    refreshChartPre();
     refreshOut();
   });
+  // 간호기록 미리보기가 열려 있으면 타이핑할 때마다 갱신
+  function refreshChartPre(){ const pre = $("#edCard .chartpre"); if (pre) pre.textContent = chartFor(cur()); }
   // IV 삽입일 입력을 마치면(칸 벗어날 때) 3일 이상이면 할 일에 "IV change" 자동 추가
   $("#edCard").addEventListener("change", e => {
     const t = e.target, o0 = cur();
@@ -1316,7 +1320,7 @@
     const save = () => {
       const mz = $("#mz"), m = {};
       MED_TYPES.forEach(t => m[t] = [...mz.querySelectorAll(`.medl[data-t="${t}"]`)].map(st));
-      cur().med = m; refreshOut();
+      cur().med = m; refreshChartPre(); refreshOut();
     };
     box.addEventListener("pointerdown", e => {
       downEl = e.target.closest(".medl"); if (!downEl) return;
@@ -1493,7 +1497,7 @@
   /* ════════════ 간호기록 초안 (autocharting 규칙 기반) ════════════
      Nr's rounded. 로 시작 → 환자 정보 → 불편감 알리도록 함. 으로 끝.
      ※ 초안: 문구는 계속 다듬는 중. 입력이 없으면 해당 줄은 빠짐 */
-  const ARM_RE = /arm|wrist|hand|elbow|shoulder|finger|forearm|clavicle|humer|radi|ulna|UE\b/i;
+  const ARM_RE = /arm|wrist|hand|elbow|shoulder|finger|forearm|clavicle|humer|radius|radial|ulna|UE\b/i;
   const LEG_RE = /leg|knee|ankle|foot|toe|hip|femur|tibia|fibula|LE\b|thigh/i;
   function sideOf(t){ const m = str(t).match(/^(Lt|Rt|Both|both|Bil)\b/); return m ? (m[1] === "Bil" ? "Both" : m[1]) : ""; }
   // 격리 차팅: 균 → 주의 종류 (이미 '주의'가 들어 있으면 그대로)
@@ -1630,7 +1634,7 @@
       .forEach(x => L.push(x === "edema" ? [str(o.edsite), str(o.edg) ? "pitting edema G" + o.edg : "edema", "ck."].filter(Boolean).join(" ") : SX_LINE[x] || `${x} ck.`));
     (o.sxl || []).map(r => str(r.t)).filter(Boolean).forEach(t => L.push(/[.。]$/.test(t) ? t : t + "."));
     if (!brain && o.szp) L.push("seizure kit prep state.");
-    // ── 튜브(Foley 등) → 수액 → NPO → 욕창 → ADL → 낙상 → 끝 ──
+    // ── 튜브·라인 → 욕창·dressing → IPC·AES → air matt → position change → 격리 → 수액 → ADL → 낙상·arm save·보호대 → 끝 ──
     lines.filter(l => !isIV(l) && !isDrainNP(l) && !/^(pcd|chest tube)$/i.test(str(l.t)) && !(o.dept === "URO" && /^foley$/i.test(str(l.t))))
       .forEach(l => L.push(tubeLine(l)));
     if (o.sore) (o.sores || []).filter(r => str(r.s)).forEach(r => L.push(`${soreText(r)} site dx kept.`));
@@ -1700,7 +1704,7 @@
     if (!pending) return;
     const { data, list } = pending; pending = null;
     try {
-      count = Math.min(MAX, Math.max(1, data.n || list.length || DEFAULT_COUNT));
+      count = Math.min(MAX, Math.max(1, Math.floor(+data.n) || list.length || DEFAULT_COUNT));
       P = Array.from({ length:count }, (_, i) => list[i] || {});
       W = Array.isArray(data.w) ? data.w.filter(r => r && typeof r === "object") : [];
       if (pvOn){ const f = P.findIndex(filled); edIdx = f >= 0 ? f : 0; renderEd(); }
