@@ -1440,6 +1440,14 @@
   const ARM_RE = /arm|wrist|hand|elbow|shoulder|finger|forearm|clavicle|humer|radi|ulna|UE\b/i;
   const LEG_RE = /leg|knee|ankle|foot|toe|hip|femur|tibia|fibula|LE\b|thigh/i;
   function sideOf(t){ const m = str(t).match(/^(Lt|Rt|Both|both|Bil)\b/); return m ? (m[1] === "Bil" ? "Both" : m[1]) : ""; }
+  // 격리 차팅: 균 → 주의 종류 (이미 '주의'가 들어 있으면 그대로)
+  function isoLine(iso){
+    if (/주의/.test(iso)) return iso.replace(/[.\s]*$/, "") + (/중$/.test(iso.replace(/[.\s]*$/, "")) ? "." : " 적용 중.");
+    const t = /tb|결핵|measles|홍역|varicella|수두|zoster/i.test(iso) ? "공기주의"
+            : /covid|코로나|influenza|인플루엔자|flu|mers|메르스|mycoplasma/i.test(iso) ? "비말주의"
+            : /vre|cre|cpe|mrsa|mrab|crab|mrpa|crpa|cdi|c\.?\s*diff|scabies|옴/i.test(iso) ? "접촉주의" : "";
+    return `${iso}${t ? " " + t : " 격리"} 적용 중.`;
+  }
   function chartFor(o){
     normPatient(o);
     const L = [];
@@ -1494,7 +1502,7 @@
     const NS_SX = ["numbness","tingling","motor weakness","radiating pain"];
     const isNSspine = isSpine(o), brain = isBrain(o);
 
-    const SX_LINE = { cough:"coughing seen.", sputum:"sputum sound seen.", dizziness:"mild dizziness ck." };
+    const SX_LINE = { cough:"coughing seen.", sputum:"sputum sound seen.", dizziness:"mild dizziness ck.", "H/A":`H/A ${NRS} ck.` };
     if (brain){
       // ── brain: M/S → M/P → 증상 → seizure kit → pain → PCA 등 ──
       L.push(`M/S ${o.ms || "alert"} ck.`);
@@ -1552,15 +1560,17 @@
       push(pcaGroup());
       if (!o.pca && has("N/V")) L.push("N/V ck.");
     }
-    // ── 나머지 증상 (직접 입력한 호소는 수동 기록이라 제외) ──
+    // ── 나머지 증상 → 직접 입력한 호소 (마침표 없으면 붙임) ──
     if (!brain) sx.filter(x => !["Pain","N/V","dyspnea","hematuria","flatus(-)"].includes(x) && !SMC_SX.includes(x) && !(isNSspine && NS_SX.includes(x)))
       .forEach(x => L.push(SX_LINE[x] || `${x} ck.`));
+    (o.sxl || []).map(r => str(r.t)).filter(Boolean).forEach(t => L.push(/[.。]$/.test(t) ? t : t + "."));
     if (!brain && o.szp) L.push("seizure kit prep state.");
     if (has("dyspnea") && !str(o.o2) && !o.s) L.push("mild dyspnea ck.");
     // ── 튜브(Foley 등) → 수액 → NPO → 욕창 → ADL → 낙상 → 끝 ──
     lines.filter(l => !isIV(l) && !isDrainNP(l) && !/^(pcd|chest tube)$/i.test(str(l.t)) && !(o.dept === "URO" && /^foley$/i.test(str(l.t))))
       .forEach(l => L.push(tubeLine(l)));
-    if (lines.some(isIV)) L.push("처방 수액 점적 중.");
+    if (str(o.iso)) L.push(isoLine(str(o.iso)));
+    L.push("처방 수액 점적 중.");
     if (o.dietb === "NPO" || /npo/i.test(o.diet || "")) L.push("NPO 유지 중.");
     if (o.sore) L.push("position change, back care done.");
     const adl = ["환의 교체", "개인위생"];
