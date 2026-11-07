@@ -437,29 +437,29 @@
   const ptList = o => { const l = str(o.pt).split(","); return PT_LIST.filter(x => l.includes(x)); };
   // 과거력: [입력값, 한글, 영문(검색용), 연결 약]
   const PMH_DB = [
-    ["HTN","고혈압","hypertension",["H"]], ["HLD","고지혈증","hyperlipidemia dyslipidemia",["Lip"]], ["CAD","관상동맥질환","coronary artery disease CAOD",["APT","Lip"]],
-    ["MI","심근경색","myocardial infarction",["APT","Lip"]], ["angina","협심증","angina",["APT"]], ["HF","심부전","heart failure",["Diu","H"]],
-    ["A-fib","심방세동","atrial fibrillation af",["AC","AA"]], ["arrhythmia","부정맥","arrhythmia",["AA"]], ["PCI","스텐트 시술","percutaneous coronary intervention stent",["APT"]],
-    ["CABG","관상동맥우회술","coronary artery bypass",["APT"]], ["DVT","심부정맥혈전","deep vein thrombosis",["AC"]], ["PTE","폐색전","pulmonary thromboembolism PE",["AC"]],
-    ["pacemaker","인공심박동기","pacemaker PPM",[]], ["AAA","복부대동맥류","abdominal aortic aneurysm",["H"]],
-    ["Cbr.infarct","뇌경색","cerebral infarction CVA stroke",["APT","Lip"]], ["ICH","뇌출혈","intracerebral hemorrhage",["H"]], ["SAH","지주막하출혈","subarachnoid hemorrhage",[]],
-    ["TIA","일과성 허혈","transient ischemic attack",["APT"]], ["epilepsy","뇌전증 간질","epilepsy seizure",["AED"]], ["PD","파킨슨병","parkinson",["Park"]],
-    ["dementia","치매","dementia alzheimer",["Psy"]], ["HNP","디스크","herniated disc",["P"]], ["spinal stenosis","척추관협착","spinal stenosis",["P"]],
-    ["asthma","천식","asthma",["Inh","Ster"]], ["COPD","만성폐쇄성폐질환","chronic obstructive",["Inh"]], ["TB","결핵","tuberculosis",["TB"]],
-    ["bronchiectasis","기관지확장증","bronchiectasis",[]],
+    ["HTN","고혈압","hypertension",["H"]], ["HLD","고지혈증","hyperlipidemia dyslipidemia",["Lip"]], ["CAD","관상동맥질환","coronary artery disease CAOD",["APT","Lip","Nit","H"]],
+    ["MI","심근경색","myocardial infarction",["APT","Lip","Nit","H"]], ["angina","협심증","angina",["Nit","APT"]], ["HF","심부전","heart failure",["Diu","H","AA","KCl"]],
+    ["A-fib","심방세동","atrial fibrillation af",["AC","AA"]], ["arrhythmia","부정맥","arrhythmia",["AA"]], ["PCI","스텐트 시술","percutaneous coronary intervention stent",["APT","Lip"]],
+    ["CABG","관상동맥우회술","coronary artery bypass",["APT","Lip"]], ["DVT","심부정맥혈전","deep vein thrombosis",["AC"]], ["PTE","폐색전","pulmonary thromboembolism PE",["AC"]],
+    ["pacemaker","인공심박동기","pacemaker PPM",[]], ["AAA","복부대동맥류","abdominal aortic aneurysm",["H","Lip"]],
+    ["Cbr.infarct","뇌경색","cerebral infarction CVA stroke",["APT","AC","Lip","H"]], ["ICH","뇌출혈","intracerebral hemorrhage",["H","AED"]], ["SAH","지주막하출혈","subarachnoid hemorrhage",["H","AED"]],
+    ["TIA","일과성 허혈","transient ischemic attack",["APT","Lip"]], ["epilepsy","뇌전증 간질","epilepsy seizure",["AED"]], ["PD","파킨슨병","parkinson",["Park","L"]],
+    ["dementia","치매","dementia alzheimer",["Dem","Psy"]], ["HNP","디스크","herniated disc",["P","MR","NP"]], ["spinal stenosis","척추관협착","spinal stenosis",["P","MR","NP"]],
+    ["asthma","천식","asthma",["Inh","Ster","AH"]], ["COPD","만성폐쇄성폐질환","chronic obstructive",["Inh","Ster"]], ["TB","결핵","tuberculosis",["TB"]],
+    ["bronchiectasis","기관지확장증","bronchiectasis",["Inh","A"]],
     ["DM","당뇨","diabetes mellitus",["D","Ins"]], ["hypothyroidism","갑상선기능저하","hypothyroidism thyroid",["Thy"]], ["hyperthyroidism","갑상선기능항진","hyperthyroidism thyroid",["Thy"]],
     ["gout","통풍","gout",["Gout"]], ["osteoporosis","골다공증","osteoporosis",["OP"]],
-    ["CKD","만성신장질환 신부전","chronic kidney disease",["KCl","Diu"]], ["BPH","전립선비대","benign prostatic hyperplasia",["Uro"]],
-    ["LC","간경변","liver cirrhosis",["Liv","Diu","L"]], ["HBV","B형간염","hepatitis b",["AV","Liv"]], ["HCV","C형간염","hepatitis c",["AV"]],
+    ["CKD","만성신장질환 신부전","chronic kidney disease",["KCl","Diu","Fe","H"]], ["BPH","전립선비대","benign prostatic hyperplasia",["Uro"]],
+    ["LC","간경변","liver cirrhosis",["Liv","Diu","L","G"]], ["HBV","B형간염","hepatitis b",["AV","Liv"]], ["HCV","C형간염","hepatitis c",["AV","Liv"]],
     ["fatty liver","지방간","fatty liver",["Liv"]], ["GERD","역류성식도염","gastroesophageal reflux",["G"]], ["gastric ulcer","위궤양","gastric ulcer PUD",["G"]],
-    ["IBD","크론 궤양성대장염","inflammatory bowel crohn ulcerative colitis",["IS","Ster"]], ["pancreatitis","췌장염","pancreatitis",[]],
-    ["stomach ca","위암","stomach cancer",["Chemo"]], ["colorectal ca","대장암","colorectal colon rectal cancer",["Chemo"]], ["HCC","간암","hepatocellular carcinoma cancer",["Chemo","Liv"]],
-    ["lung ca","폐암","lung cancer",["Chemo"]], ["breast ca","유방암","breast cancer",["Chemo"]], ["prostate ca","전립선암","prostate cancer",["Chemo"]],
-    ["thyroid ca","갑상선암","thyroid cancer",["Thy"]], ["pancreatic ca","췌장암","pancreatic cancer",["Chemo"]], ["heme malignancy","혈액암 림프종 백혈병 골수종","lymphoma leukemia myeloma cancer",["Chemo"]],
-    ["MDD","우울증","major depressive disorder depression",["Psy"]], ["anxiety/panic","불안 공황","anxiety panic",["Psy","Sed"]], ["schizophrenia","조현병","schizophrenia",["Psy"]],
-    ["bipolar","양극성장애 조울증","bipolar",["Psy"]], ["insomnia","불면","insomnia",["Sed"]], ["alcoholism","알코올 사용장애","alcohol",[]],
-    ["RA","류마티스관절염","rheumatoid arthritis",["IS","Ster"]], ["OA","퇴행성관절염","osteoarthritis",["P"]], ["SLE","루푸스","lupus",["IS","Ster"]],
-    ["AS","강직성척추염","ankylosing spondylitis",["IS"]], ["TKA","무릎 인공관절","total knee arthroplasty",[]], ["THA","고관절 인공관절","total hip arthroplasty",[]],
+    ["IBD","크론 궤양성대장염","inflammatory bowel crohn ulcerative colitis",["IS","Ster","Dia"]], ["pancreatitis","췌장염","pancreatitis",["P","AE"]],
+    ["stomach ca","위암","stomach cancer",["Chemo","AE","Nar","P"]], ["colorectal ca","대장암","colorectal colon rectal cancer",["Chemo","AE","Nar","P"]], ["HCC","간암","hepatocellular carcinoma cancer",["Chemo","AE","Nar","P","Liv"]],
+    ["lung ca","폐암","lung cancer",["Chemo","AE","Nar","P"]], ["breast ca","유방암","breast cancer",["Chemo","AE","Nar","P"]], ["prostate ca","전립선암","prostate cancer",["Chemo","AE","Nar","P"]],
+    ["thyroid ca","갑상선암","thyroid cancer",["Thy"]], ["pancreatic ca","췌장암","pancreatic cancer",["Chemo","AE","Nar","P"]], ["heme malignancy","혈액암 림프종 백혈병 골수종","lymphoma leukemia myeloma cancer",["Chemo","AE","Nar","P"]],
+    ["MDD","우울증","major depressive disorder depression",["Psy","Sed"]], ["anxiety/panic","불안 공황","anxiety panic",["Psy","Sed"]], ["schizophrenia","조현병","schizophrenia",["Psy"]],
+    ["bipolar","양극성장애 조울증","bipolar",["Psy"]], ["insomnia","불면","insomnia",["Sed"]], ["alcoholism","알코올 사용장애","alcohol",["Sed"]],
+    ["RA","류마티스관절염","rheumatoid arthritis",["IS","Ster","P"]], ["OA","퇴행성관절염","osteoarthritis",["P"]], ["SLE","루푸스","lupus",["IS","Ster"]],
+    ["AS","강직성척추염","ankylosing spondylitis",["IS","P"]], ["TKA","무릎 인공관절","total knee arthroplasty",["P","AC"]], ["THA","고관절 인공관절","total hip arthroplasty",["P","AC"]],
     ["anemia","빈혈","anemia",["Fe"]], ["thrombocytopenia","혈소판감소","thrombocytopenia",[]], ["HIV","HIV","hiv",["AV"]], ["glaucoma","녹내장","glaucoma",[]],
   ];
   const PMH_KEYS = PMH_DB.map(r => r[0]);
@@ -477,7 +477,8 @@
   function medPriority(o){
     const on = MED_TYPES.filter(t => Array.isArray((o.med || {})[t]) && o.med[t].some(v => +v));
     const fromPmh = pmhList(o).flatMap(k => (PMH_DB.find(r => r[0] === k) || [,,,[]])[3]);
-    const base = (DEPT_MED[o.dept] || []).concat(fromPmh);
+    const dk = o.dept === "NS" ? (isSpine(o) ? "NSs" : "NSb") : o.dept;
+    const base = (DEPT_MED[dk] || []).concat(fromPmh);
     const set = new Set((base.length ? base : MED_BASIC).concat(on));
     return MED_TYPES.filter(t => set.has(t));
   }
@@ -488,23 +489,43 @@
   const FLUIDS = ["Fluid","TPN","none","acting"];
   const flList = o => { const l = str(o.fl).split(","); return FLUIDS.filter(x => l.includes(x)); };
   // 개별탭엔 분류별로 줄을 나눠 보여줌 (감염·호흡 / 통증·신경 / 심혈관 / 대사 / 소화)
-  const MED_GROUPS = [["A","AV","TB","U","AH","Inh"], ["P","Nar","Ster","AED","Sed","Park","Psy"], ["H","AC","APT","AA","Diu","Lip"],
-                      ["D","Ins","Thy","KCl","OP","Gout"], ["G","L","Liv","Uro","Fe","IS","Chemo"]];
+  // 약 분류 (개별탭 '더보기'는 이 줄 단위로). 저장 키 A P U H D G L KCl은 이전 데이터와 호환
+  const MED_GROUPS = [
+    ["A","AV","Fung","TB"],                                              // 감염
+    ["U","Inh","AH"],                                                    // 호흡·알레르기
+    ["P","Nar","MR","NP","Ster","AED","Sed","Psy","Park","Dem"],         // 통증·신경·정신
+    ["H","Diu","Nit","AA","APT","AC","Lip"],                             // 심혈관·항혈전
+    ["D","Ins","Thy","KCl","OP","Gout"],                                 // 대사·내분비
+    ["G","AE","L","Dia","Liv"],                                          // 소화
+    ["Uro","Fe","IS","Chemo"]];                                          // 비뇨·혈액·기타
   const MED_TYPES = MED_GROUPS.flat();
   const MED_LABEL = { A:"Abx", P:"Ana", U:"URI", H:"HTN", D:"DM", G:"GI", L:"Lax", KCl:"Elec" };   // KCl은 저장 키만 (표시는 Elec)
   const medLabel = t => MED_LABEL[t] || t;
-  const MED_NAMES = { A:"항생제", P:"진통·해열", U:"감기약", H:"혈압약", D:"경구 당뇨약", G:"위장약", L:"변비약",
-                      AC:"항응고제", APT:"항혈소판제", Ins:"인슐린", Nar:"마약성 진통제", Diu:"이뇨제", Ster:"스테로이드",
-                      Sed:"수면·진정제", AED:"항경련제", OP:"골다공증", AV:"항바이러스제", KCl:"전해질",
-                      AH:"항알러지(항히스타민)", Lip:"고지혈증", Liv:"간장제",
-                      TB:"항결핵제", Inh:"흡입제", Park:"파킨슨약", Psy:"정신과약", AA:"항부정맥제", Thy:"갑상선약", Gout:"통풍약",
-                      Uro:"전립선·배뇨", Fe:"철분·조혈", IS:"면역억제제", Chemo:"항암제" };
-  // 과별로 먼저 보여줄 약 (나머지는 '더보기')
+  const MED_NAMES = { A:"항생제", AV:"항바이러스제", Fung:"항진균제", TB:"항결핵제",
+                      U:"진해거담·감기약", Inh:"흡입제", AH:"항히스타민",
+                      P:"진통·해열(NSAIDs·APAP)", Nar:"마약성 진통제", MR:"근이완제", NP:"신경병증 통증(pregabalin 등)", Ster:"스테로이드",
+                      AED:"항경련제", Sed:"수면·진정제", Psy:"정신과약(항우울·항정신)", Park:"파킨슨약", Dem:"치매약",
+                      H:"혈압약", Diu:"이뇨제", Nit:"협심증약(질산염 등)", AA:"항부정맥·심박조절", APT:"항혈소판제", AC:"항응고제", Lip:"고지혈증",
+                      D:"경구 당뇨약", Ins:"인슐린", Thy:"갑상선약", KCl:"전해질(K·Mg·Ca·인 결합제)", OP:"골다공증", Gout:"통풍약",
+                      G:"위장약(PPI·H2)", AE:"항구토제", L:"변비약", Dia:"지사제", Liv:"간장제",
+                      Uro:"전립선·배뇨", Fe:"철분·조혈(EPO)", IS:"면역억제제", Chemo:"항암제" };
+  // 과별로 먼저 보여줄 약 (나머지는 '더보기'). NS는 spine / brain 따로
   const DEPT_MED = {
-    OS:["P","Nar","AC","OP","A","G"], NS:["P","Nar","Ster","AED","A","G"], NR:["APT","AC","AED","Lip","Park","Psy"],
-    GS:["A","P","Nar","G","L"], GI:["G","L","Liv","A","AV"], PU:["A","U","Inh","Ster","TB"], AM:["A","U","Inh","Ster","AH"],
-    CV:["H","AC","APT","AA","Diu","Lip"], NE:["H","Diu","KCl","Fe","IS"], IF:["A","AV","TB"], URO:["A","Uro","P"],
-    OBGY:["A","P","Fe"], ED:["D","Ins","Thy","Ster"], PED:["A","U","P","AH"], DT:["A","P"] };
+    OS:  ["P","Nar","MR","NP","AC","A","G","AE","OP","Gout"],
+    NSs: ["P","Nar","MR","NP","Ster","A","G","AE","L"],
+    NSb: ["AED","Ster","H","APT","AC","Lip","D","A","G","Sed","Psy","L"],
+    NR:  ["APT","AC","Lip","H","D","AED","Park","Dem","Psy","Sed","G","L"],
+    GS:  ["A","P","Nar","AE","G","L","AC"],
+    GI:  ["G","AE","L","Dia","Liv","A","AV","Diu","Fe","KCl"],
+    PU:  ["A","U","Inh","Ster","TB","AV","Fung","AH"],
+    AM:  ["A","U","Inh","Ster","AH","AV"],
+    CV:  ["H","Diu","Nit","AA","APT","AC","Lip","D","KCl"],
+    NE:  ["H","Diu","KCl","Fe","IS","Ster","D","A"],
+    IF:  ["A","AV","Fung","TB","P"],
+    URO: ["A","Uro","P","Nar","AE"],
+    OBGY:["A","P","Fe","AE","Chemo"],
+    ED:  ["D","Ins","Thy","Ster","H","Lip","KCl","OP","Diu"],
+    PED: ["A","U","P","AH","Inh","AE","Dia","Ster","AED"] };
   const MED_BASIC = ["A","P","U","H","D","G","L"];                         // 과·과거력이 없을 때
   // 위험 표시 (개별탭·전체탭 둘 다에서 켜고 끔)
   const ISO_T = ["공기","접촉","비말","혈액","보호"];            // 격리 종류 (전체탭엔 이 이름으로)
@@ -539,7 +560,7 @@
                    ["lab","L"],["ua","U"],["ekg","E"],["rad","R"],["sp","SP"],["st","ST"],["nd","ND"],["ac","A.C."],["bw","B.W."]];
   // 진료과 (병동 업무 매뉴얼 wiki/99_부록/부서_약어.md 기준)
   const DEPTS = [["OS","정형외과"],["NS","신경외과"],["NR","신경과"],["GS","외과"],["GI","소화기내과"],["PU","호흡기내과"],["AM","호흡기알레르기내과"],
-                 ["CV","심장내과"],["NE","신장내과"],["IF","감염내과"],["URO","비뇨기과"],["OBGY","산부인과"],["ED","내분비내과"],["PED","소아과"],["DT","치과"]];
+                 ["CV","심장내과"],["NE","신장내과"],["IF","감염내과"],["URO","비뇨기과"],["OBGY","부인과"],["ED","내분비내과"],["PED","소아과"]];
   // 증상 버튼: 공통 + 과별. 발열은 V/S(BT)로 보므로 제외. Pain은 부위·NRS 따로
   const SX_COMMON = ["Pain","URI","dyspnea","N/V","dizziness","H/A","constipation","diarrhea","insomnia","G/W"];
   const SX_DEPT = {
@@ -557,7 +578,6 @@
     OBGY: ["vaginal bleeding","vaginal discharge"],
     ED:   ["polyuria","polydipsia","hypoglycemia sx","palpitation"],
     PED:  ["cough","rhinorrhea","poor oral intake","irritability"],
-    DT:   ["swelling","bleeding","trismus"],
   };
   const SX = [...new Set(SX_COMMON.concat(...Object.values(SX_DEPT), ["edema","dysuria","sore throat","nasal obstruction","epistaxis","hearing loss"]))];   // 저장값으로 인정하는 전체 목록
   const sxButtons = o => { const sel = sxList(o);
