@@ -311,6 +311,12 @@
   .pmhi span{color:#64748b}
   .pmhi.on b::after{content:" ✓"; color:#0ea5e9}
   .pmhi.none{color:#94a3b8; cursor:default}
+  .medl small{font-size:.72em; margin-left:2px; opacity:.85}
+  .medl.hi{font-weight:800}
+  .medc.hi{font-weight:900; text-decoration:underline}
+  .mgrp{margin-top:6px}
+  .mzone.sub{margin-top:4px; padding:6px; background:#f8fafc; border-radius:8px}
+  .medmenu input{font:inherit; font-size:14px; width:11em}
   .addbtn.sm{font-size:12px; padding:3px 8px; margin:0}
   .medin{width:7em; font-size:14px}
   button.today{font:inherit; font-size:11px; border:1px solid #cbd5e1; background:#fff; color:#475569; border-radius:6px; padding:2px 6px; cursor:pointer; white-space:nowrap}
@@ -437,30 +443,30 @@
   const ptList = o => { const l = str(o.pt).split(","); return PT_LIST.filter(x => l.includes(x)); };
   // 과거력: [입력값, 한글, 영문(검색용), 연결 약]
   const PMH_DB = [
-    ["HTN","고혈압","hypertension",["H"]], ["HLD","고지혈증","hyperlipidemia dyslipidemia",["Lip"]], ["CAD","관상동맥질환","coronary artery disease CAOD",["APT","Lip","Nit","H"]],
-    ["MI","심근경색","myocardial infarction",["APT","Lip","Nit","H"]], ["angina","협심증","angina",["Nit","APT"]], ["HF","심부전","heart failure",["Diu","H","AA","KCl"]],
-    ["A-fib","심방세동","atrial fibrillation af",["AC","AA"]], ["arrhythmia","부정맥","arrhythmia",["AA"]], ["PCI","스텐트 시술","percutaneous coronary intervention stent",["APT","Lip"]],
-    ["CABG","관상동맥우회술","coronary artery bypass",["APT","Lip"]], ["DVT","심부정맥혈전","deep vein thrombosis",["AC"]], ["PTE","폐색전","pulmonary thromboembolism PE",["AC"]],
-    ["pacemaker","인공심박동기","pacemaker PPM",[]], ["AAA","복부대동맥류","abdominal aortic aneurysm",["H","Lip"]],
-    ["Cbr.infarct","뇌경색","cerebral infarction CVA stroke",["APT","AC","Lip","H"]], ["ICH","뇌출혈","intracerebral hemorrhage",["H","AED"]], ["SAH","지주막하출혈","subarachnoid hemorrhage",["H","AED"]],
-    ["TIA","일과성 허혈","transient ischemic attack",["APT","Lip"]], ["epilepsy","뇌전증 간질","epilepsy seizure",["AED"]], ["PD","파킨슨병","parkinson",["Park","L"]],
-    ["dementia","치매","dementia alzheimer",["Dem","Psy"]], ["HNP","디스크","herniated disc",["P","MR","NP"]], ["spinal stenosis","척추관협착","spinal stenosis",["P","MR","NP"]],
-    ["asthma","천식","asthma",["Inh","Ster","AH"]], ["COPD","만성폐쇄성폐질환","chronic obstructive",["Inh","Ster"]], ["TB","결핵","tuberculosis",["TB"]],
-    ["bronchiectasis","기관지확장증","bronchiectasis",["Inh","A"]],
-    ["DM","당뇨","diabetes mellitus",["D","Ins"]], ["hypothyroidism","갑상선기능저하","hypothyroidism thyroid",["Thy"]], ["hyperthyroidism","갑상선기능항진","hyperthyroidism thyroid",["Thy"]],
-    ["gout","통풍","gout",["Gout"]], ["osteoporosis","골다공증","osteoporosis",["OP"]],
-    ["CKD","만성신장질환 신부전","chronic kidney disease",["KCl","Diu","Fe","H"]], ["BPH","전립선비대","benign prostatic hyperplasia",["Uro"]],
-    ["LC","간경변","liver cirrhosis",["Liv","Diu","L","G"]], ["HBV","B형간염","hepatitis b",["AV","Liv"]], ["HCV","C형간염","hepatitis c",["AV","Liv"]],
-    ["fatty liver","지방간","fatty liver",["Liv"]], ["GERD","역류성식도염","gastroesophageal reflux",["G"]], ["gastric ulcer","위궤양","gastric ulcer PUD",["G"]],
-    ["IBD","크론 궤양성대장염","inflammatory bowel crohn ulcerative colitis",["IS","Ster","Dia"]], ["pancreatitis","췌장염","pancreatitis",["P","AE"]],
-    ["stomach ca","위암","stomach cancer",["Chemo","AE","Nar","P"]], ["colorectal ca","대장암","colorectal colon rectal cancer",["Chemo","AE","Nar","P"]], ["HCC","간암","hepatocellular carcinoma cancer",["Chemo","AE","Nar","P","Liv"]],
-    ["lung ca","폐암","lung cancer",["Chemo","AE","Nar","P"]], ["breast ca","유방암","breast cancer",["Chemo","AE","Nar","P"]], ["prostate ca","전립선암","prostate cancer",["Chemo","AE","Nar","P"]],
-    ["thyroid ca","갑상선암","thyroid cancer",["Thy"]], ["pancreatic ca","췌장암","pancreatic cancer",["Chemo","AE","Nar","P"]], ["heme malignancy","혈액암 림프종 백혈병 골수종","lymphoma leukemia myeloma cancer",["Chemo","AE","Nar","P"]],
-    ["MDD","우울증","major depressive disorder depression",["Psy","Sed"]], ["anxiety/panic","불안 공황","anxiety panic",["Psy","Sed"]], ["schizophrenia","조현병","schizophrenia",["Psy"]],
-    ["bipolar","양극성장애 조울증","bipolar",["Psy"]], ["insomnia","불면","insomnia",["Sed"]], ["alcoholism","알코올 사용장애","alcohol",["Sed"]],
-    ["RA","류마티스관절염","rheumatoid arthritis",["IS","Ster","P"]], ["OA","퇴행성관절염","osteoarthritis",["P"]], ["SLE","루푸스","lupus",["IS","Ster"]],
-    ["AS","강직성척추염","ankylosing spondylitis",["IS","P"]], ["TKA","무릎 인공관절","total knee arthroplasty",["P","AC"]], ["THA","고관절 인공관절","total hip arthroplasty",["P","AC"]],
-    ["anemia","빈혈","anemia",["Fe"]], ["thrombocytopenia","혈소판감소","thrombocytopenia",[]], ["HIV","HIV","hiv",["AV"]], ["glaucoma","녹내장","glaucoma",[]],
+    ["HTN","고혈압","hypertension",["혈압"]], ["HLD","고지혈증","hyperlipidemia dyslipidemia",["고지혈증"]], ["CAD","관상동맥질환","coronary artery disease CAOD",["항혈소판","고지혈증","협심증","혈압"]],
+    ["MI","심근경색","myocardial infarction",["항혈소판","고지혈증","협심증","혈압"]], ["angina","협심증","angina",["협심증","항혈소판"]], ["HF","심부전","heart failure",["이뇨","혈압","항부정맥","전해질"]],
+    ["A-fib","심방세동","atrial fibrillation af",["항응고","항부정맥"]], ["arrhythmia","부정맥","arrhythmia",["항부정맥"]], ["PCI","스텐트 시술","percutaneous coronary intervention stent",["항혈소판","고지혈증"]],
+    ["CABG","관상동맥우회술","coronary artery bypass",["항혈소판","고지혈증"]], ["DVT","심부정맥혈전","deep vein thrombosis",["항응고"]], ["PTE","폐색전","pulmonary thromboembolism PE",["항응고"]],
+    ["pacemaker","인공심박동기","pacemaker PPM",[]], ["AAA","복부대동맥류","abdominal aortic aneurysm",["혈압","고지혈증"]],
+    ["Cbr.infarct","뇌경색","cerebral infarction CVA stroke",["항혈소판","항응고","고지혈증","혈압"]], ["ICH","뇌출혈","intracerebral hemorrhage",["혈압","항경련"]], ["SAH","지주막하출혈","subarachnoid hemorrhage",["혈압","항경련"]],
+    ["TIA","일과성 허혈","transient ischemic attack",["항혈소판","고지혈증"]], ["epilepsy","뇌전증 간질","epilepsy seizure",["항경련"]], ["PD","파킨슨병","parkinson",["파킨슨","변비"]],
+    ["dementia","치매","dementia alzheimer",["치매","항정신병"]], ["HNP","디스크","herniated disc",["진통","근이완","신경통"]], ["spinal stenosis","척추관협착","spinal stenosis",["진통","근이완","신경통"]],
+    ["asthma","천식","asthma",["스테로이드","항히스타민"]], ["COPD","만성폐쇄성폐질환","chronic obstructive",["스테로이드","거담"]], ["TB","결핵","tuberculosis",["항결핵"]],
+    ["bronchiectasis","기관지확장증","bronchiectasis",["거담","항생"]],
+    ["DM","당뇨","diabetes mellitus",["혈당강하","인슐린"]], ["hypothyroidism","갑상선기능저하","hypothyroidism thyroid",["갑상선"]], ["hyperthyroidism","갑상선기능항진","hyperthyroidism thyroid",["갑상선"]],
+    ["gout","통풍","gout",["통풍"]], ["osteoporosis","골다공증","osteoporosis",["골다공증"]],
+    ["CKD","만성신장질환 신부전","chronic kidney disease",["전해질","이뇨","철분","조혈","혈압"]], ["BPH","전립선비대","benign prostatic hyperplasia",["전립선","배뇨"]],
+    ["LC","간경변","liver cirrhosis",["간장","이뇨","변비","위장"]], ["HBV","B형간염","hepatitis b",["항바이러스","간장"]], ["HCV","C형간염","hepatitis c",["항바이러스","간장"]],
+    ["fatty liver","지방간","fatty liver",["간장"]], ["GERD","역류성식도염","gastroesophageal reflux",["위장"]], ["gastric ulcer","위궤양","gastric ulcer PUD",["위장"]],
+    ["IBD","크론 궤양성대장염","inflammatory bowel crohn ulcerative colitis",["면역억제","스테로이드","지사"]], ["pancreatitis","췌장염","pancreatitis",["진통","항구토"]],
+    ["stomach ca","위암","stomach cancer",["항암","항구토","통증(마)","진통"]], ["colorectal ca","대장암","colorectal colon rectal cancer",["항암","항구토","통증(마)","진통"]], ["HCC","간암","hepatocellular carcinoma cancer",["항암","항구토","통증(마)","진통","간장"]],
+    ["lung ca","폐암","lung cancer",["항암","항구토","통증(마)","진통"]], ["breast ca","유방암","breast cancer",["항암","항구토","통증(마)","진통"]], ["prostate ca","전립선암","prostate cancer",["항암","항구토","통증(마)","진통"]],
+    ["thyroid ca","갑상선암","thyroid cancer",["갑상선"]], ["pancreatic ca","췌장암","pancreatic cancer",["항암","항구토","통증(마)","진통"]], ["heme malignancy","혈액암 림프종 백혈병 골수종","lymphoma leukemia myeloma cancer",["항암","항구토","통증(마)","진통"]],
+    ["MDD","우울증","major depressive disorder depression",["항우울","수면"]], ["anxiety/panic","불안 공황","anxiety panic",["항불안","수면"]], ["schizophrenia","조현병","schizophrenia",["항정신병"]],
+    ["bipolar","양극성장애 조울증","bipolar",["항정신병"]], ["insomnia","불면","insomnia",["수면"]], ["alcoholism","알코올 사용장애","alcohol",["진정","비타민"]],
+    ["RA","류마티스관절염","rheumatoid arthritis",["면역억제","스테로이드","진통"]], ["OA","퇴행성관절염","osteoarthritis",["진통"]], ["SLE","루푸스","lupus",["면역억제","스테로이드"]],
+    ["AS","강직성척추염","ankylosing spondylitis",["면역억제","진통"]], ["TKA","무릎 인공관절","total knee arthroplasty",["진통","항응고"]], ["THA","고관절 인공관절","total hip arthroplasty",["진통","항응고"]],
+    ["anemia","빈혈","anemia",["철분","조혈"]], ["thrombocytopenia","혈소판감소","thrombocytopenia",[]], ["HIV","HIV","hiv",["항바이러스"]], ["glaucoma","녹내장","glaucoma",[]],
   ];
   const PMH_KEYS = PMH_DB.map(r => r[0]);
   const PMH_QUICK = ["HTN","DM","HLD","CKD","HF","CAD","A-fib","Cbr.infarct","asthma","COPD","LC"];   // 버튼으로 위에
@@ -489,44 +495,46 @@
   const FLUIDS = ["Fluid","TPN","none","acting"];
   const flList = o => { const l = str(o.fl).split(","); return FLUIDS.filter(x => l.includes(x)); };
   // 개별탭엔 분류별로 줄을 나눠 보여줌 (감염·호흡 / 통증·신경 / 심혈관 / 대사 / 소화)
-  // 약 분류 (개별탭 '더보기'는 이 줄 단위로). 저장 키 A P U H D G L KCl은 이전 데이터와 호환
-  const MED_GROUPS = [
-    ["A","AV","Fung","TB"],                                              // 감염
-    ["U","Inh","AH"],                                                    // 호흡·알레르기
-    ["P","Nar","MR","NP","Ster","AED","Sed","Psy","Park","Dem"],         // 통증·신경·정신
-    ["H","Diu","Nit","AA","APT","AC","Lip"],                             // 심혈관·항혈전
-    ["D","Ins","Thy","KCl","OP","Gout"],                                 // 대사·내분비
-    ["G","AE","L","Dia","Liv"],                                          // 소화
-    ["Uro","Fe","IS","Chemo"]];                                          // 비뇨·혈액·기타
-  const MED_TYPES = MED_GROUPS.flat();
-  const MED_LABEL = { A:"Abx", P:"Ana", U:"URI", H:"HTN", D:"DM", G:"GI", L:"Lax", KCl:"Elec" };   // KCl은 저장 키만 (표시는 Elec)
-  const medLabel = t => MED_LABEL[t] || t;
-  const MED_NAMES = { A:"항생제", AV:"항바이러스제", Fung:"항진균제", TB:"항결핵제",
-                      U:"진해거담·감기약", Inh:"흡입제", AH:"항히스타민",
-                      P:"진통·해열(NSAIDs·APAP)", Nar:"마약성 진통제", MR:"근이완제", NP:"신경병증 통증(pregabalin 등)", Ster:"스테로이드",
-                      AED:"항경련제", Sed:"수면·진정제", Psy:"정신과약(항우울·항정신)", Park:"파킨슨약", Dem:"치매약",
-                      H:"혈압약", Diu:"이뇨제", Nit:"협심증약(질산염 등)", AA:"항부정맥·심박조절", APT:"항혈소판제", AC:"항응고제", Lip:"고지혈증",
-                      D:"경구 당뇨약", Ins:"인슐린", Thy:"갑상선약", KCl:"전해질(K·Mg·Ca·인 결합제)", OP:"골다공증", Gout:"통풍약",
-                      G:"위장약(PPI·H2)", AE:"항구토제", L:"변비약", Dia:"지사제", Liv:"간장제",
-                      Uro:"전립선·배뇨", Fe:"철분·조혈(EPO)", IS:"면역억제제", Chemo:"항암제" };
-  // 과별로 먼저 보여줄 약 (나머지는 '더보기'). NS는 spine / brain 따로
+  // 약 분류: 상위 분류 → 하위 분류 (목적으로 한글 표기). 하위 분류 이름이 곧 저장 키
+  const MED_TREE = [
+    ["감염", ["항생","항바이러스","항진균","항결핵"]],
+    ["통증", ["해열","진통","통증(마)","근이완","신경통"]],
+    ["호흡·알레르기", ["진해","거담","항히스타민"]],
+    ["신경·정신", ["항경련","수면","진정","항우울","항불안","항정신병","파킨슨","치매"]],
+    ["심혈관", ["혈압","이뇨","협심증","항부정맥","고지혈증","승압"]],
+    ["항혈전·지혈", ["항혈소판","항응고","지혈"]],
+    ["내분비·대사", ["혈당강하","인슐린","갑상선","스테로이드","호르몬","골다공증","통풍"]],
+    ["소화기", ["위장","항구토","진경","변비","지사","간장"]],
+    ["전해질·혈액·영양", ["전해질","철분","조혈","수혈","알부민","비타민","영양"]],
+    ["기타", ["전립선","배뇨","면역억제","항암"]],
+  ];
+  const MED_TYPES = MED_TREE.flatMap(g => g[1]);
+  const medLabel = t => t;
+  const MED_HIGH = ["통증(마)","항응고","인슐린","전해질","항암","승압"];   // 고위험: 전체탭에서 굵게
+  // 이전 약어 키 → 새 분류 (흡입은 분류에서 빠져 직접 추가 약으로 옮김)
+  const MED_OLD = { A:"항생", AV:"항바이러스", Fung:"항진균", TB:"항결핵", U:"진해", AH:"항히스타민", P:"진통", Nar:"통증(마)",
+    MR:"근이완", NP:"신경통", Ster:"스테로이드", AED:"항경련", Sed:"수면", Psy:"항우울", Park:"파킨슨", Dem:"치매", H:"혈압",
+    Diu:"이뇨", Nit:"협심증", AA:"항부정맥", APT:"항혈소판", AC:"항응고", Lip:"고지혈증", D:"혈당강하", Ins:"인슐린", Thy:"갑상선",
+    KCl:"전해질", OP:"골다공증", Gout:"통풍", G:"위장", AE:"항구토", L:"변비", Dia:"지사", Liv:"간장", Uro:"전립선", Fe:"철분",
+    IS:"면역억제", Chemo:"항암" };
+  // 과별로 먼저 보여줄 분류. NS는 spine / brain 따로
   const DEPT_MED = {
-    OS:  ["P","Nar","MR","NP","AC","A","G","AE","OP","Gout"],
-    NSs: ["P","Nar","MR","NP","Ster","A","G","AE","L"],
-    NSb: ["AED","Ster","H","APT","AC","Lip","D","A","G","Sed","Psy","L"],
-    NR:  ["APT","AC","Lip","H","D","AED","Park","Dem","Psy","Sed","G","L"],
-    GS:  ["A","P","Nar","AE","G","L","AC"],
-    GI:  ["G","AE","L","Dia","Liv","A","AV","Diu","Fe","KCl"],
-    PU:  ["A","U","Inh","Ster","TB","AV","Fung","AH"],
-    AM:  ["A","U","Inh","Ster","AH","AV"],
-    CV:  ["H","Diu","Nit","AA","APT","AC","Lip","D","KCl"],
-    NE:  ["H","Diu","KCl","Fe","IS","Ster","D","A"],
-    IF:  ["A","AV","Fung","TB","P"],
-    URO: ["A","Uro","P","Nar","AE"],
-    OBGY:["A","P","Fe","AE","Chemo"],
-    ED:  ["D","Ins","Thy","Ster","H","Lip","KCl","OP","Diu"],
-    PED: ["A","U","P","AH","Inh","AE","Dia","Ster","AED"] };
-  const MED_BASIC = ["A","P","U","H","D","G","L"];                         // 과·과거력이 없을 때
+    OS:  ["진통","해열","통증(마)","근이완","신경통","항응고","항생","위장","항구토","골다공증","통풍"],
+    NSs: ["진통","통증(마)","근이완","신경통","스테로이드","항생","위장","항구토","변비"],
+    NSb: ["항경련","스테로이드","혈압","항혈소판","항응고","고지혈증","혈당강하","항생","해열","위장","수면","항정신병","변비"],
+    NR:  ["항혈소판","항응고","고지혈증","혈압","혈당강하","항경련","파킨슨","치매","항정신병","수면","위장","변비"],
+    GS:  ["항생","진통","통증(마)","항구토","위장","진경","변비","항응고"],
+    GI:  ["위장","항구토","진경","변비","지사","간장","항생","항바이러스","이뇨","철분","수혈","알부민","전해질","비타민"],
+    PU:  ["항생","진해","거담","스테로이드","항결핵","항바이러스","항진균","항히스타민","해열"],
+    AM:  ["항생","진해","거담","스테로이드","항히스타민","항바이러스","해열"],
+    CV:  ["혈압","이뇨","협심증","항부정맥","항혈소판","항응고","고지혈증","혈당강하","전해질","승압"],
+    NE:  ["혈압","이뇨","전해질","철분","조혈","면역억제","스테로이드","혈당강하","항생","알부민"],
+    IF:  ["항생","항바이러스","항진균","항결핵","해열"],
+    URO: ["항생","전립선","배뇨","진통","통증(마)","항구토","지혈"],
+    OBGY:["항생","진통","철분","호르몬","항구토","지혈","항암"],
+    ED:  ["혈당강하","인슐린","갑상선","스테로이드","호르몬","혈압","고지혈증","전해질","골다공증","이뇨"],
+    PED: ["항생","해열","진해","거담","항히스타민","항구토","지사","스테로이드","항경련"] };
+  const MED_BASIC = ["항생","해열","진통","혈압","혈당강하","위장","변비"];       // 과·과거력이 없을 때
   // 위험 표시 (개별탭·전체탭 둘 다에서 켜고 끔)
   const ISO_T = ["공기","접촉","비말","혈액","보호"];            // 격리 종류 (전체탭엔 이 이름으로)
   const ISO_CHART = { 공기:"공기주의", 접촉:"접촉주의", 비말:"비말주의", 혈액:"혈액주의", 보호:"보호격리" };
@@ -624,6 +632,16 @@
       o.todo = (o.todo || []).concat(str(o.exam).split("\n").map(t => t.trim()).filter(Boolean).map(t => ({ t })));
       delete o.exam; delete o.exs;
     }
+    if (o.med && Object.keys(o.med).some(k => MED_OLD[k] || k === "Inh")){   // 약어 키 → 한글 분류
+      const m = {}, n = {};
+      Object.entries(o.med).forEach(([k, a]) => {
+        if (!Array.isArray(a)) return;
+        if (k === "Inh"){ a.filter(v => +v).forEach(v => (o.medx = o.medx || []).push({ t:"흡입", v:+v })); return; }
+        const nk = MED_OLD[k] || k; m[nk] = (m[nk] || []).concat(a);
+        if (o.medn && Array.isArray(o.medn[k])) n[nk] = (n[nk] || []).concat(o.medn[k]);
+      });
+      o.med = m; if (o.medn) o.medn = n;
+    }
     if (o.opdx === "kept") o.opdx = "y"; else if (o.opdx === "open") o.opdx = "n";
     if (!Array.isArray(o.sxl) && str(o.sxt)){                              // 증상 직접 입력: 한 덩어리 → 줄마다
       o.sxl = str(o.sxt).split("\n").map(t => ({ t:t.trim() })).filter(x => x.t);
@@ -673,7 +691,7 @@
   let count = DEFAULT_COUNT;
   let P = Array.from({ length:count }, () => ({}));
   let W = [];   // 병동 공통 할 일 [{t, c}] — 환자와 무관한 업무
-  let edIdx = 0, pvOn = false, edLinePick = false, edChartOpen = false, edMedMore = false;
+  let edIdx = 0, pvOn = false, edLinePick = false, edChartOpen = false, edMedGrp = -1;
 
   const esc = v => String(v == null ? "" : v).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const str = v => (v == null ? "" : String(v)).trim();
@@ -852,7 +870,8 @@
     if (fl.length) h += `<span class="medc fl">${esc(fl.join("·"))}</span>`;
     MED_TYPES.forEach(ty => {
       const a = (o.med && Array.isArray(o.med[ty])) ? o.med[ty] : [];
-      a.forEach((v, k) => { if (+v > 0 && +v <= 3) h += `<span class="medc m${+v}" data-med="${ty}:${k}">${medLabel(ty)}</span>`; });
+      const nm = (o.medn || {})[ty] || [];
+      a.forEach((v, k) => { if (+v > 0 && +v <= 3) h += `<span class="medc m${+v}${MED_HIGH.includes(ty) ? " hi" : ""}" data-med="${esc(ty)}:${k}">${esc(ty)}${nm[k] ? "(" + esc(nm[k]) + ")" : ""}</span>`; });
     });
     (o.medx || []).forEach((r, j) => { if (+r.v > 0 && +r.v <= 3) h += `<span class="medc m${+r.v}" data-mx="${j}">${esc(r.t)}</span>`; });
     const pca = +o.pca || 0;
@@ -995,7 +1014,7 @@
     if (e.target.closest("[data-nm]")){ startNameEdit(i); return; }
     const md = e.target.closest("[data-med]");
     if (md){                                   // 약 글자: 끔→경구→주사→기타→끔
-      const [ty, k] = md.dataset.med.split(":"); o.med = o.med || {};
+      const c = md.dataset.med.lastIndexOf(":"), ty = md.dataset.med.slice(0, c), k = md.dataset.med.slice(c + 1); o.med = o.med || {};
       const a = (Array.isArray(o.med[ty]) && o.med[ty].length) ? o.med[ty] : [0];
       a[+k] = ((+a[+k] || 0) + 1) % 4; o.med[ty] = a; renderSheet(); return;
     }
@@ -1238,14 +1257,18 @@
   const inp  = (f, ph, extra) => `<input id="f-${f}" data-f="${f}" value="${esc(cur()[f])}" placeholder="${ph || ""}" autocomplete="off" ${extra || ""}>`;
   const ta   = (f, ph) => `<textarea id="f-${f}" data-f="${f}" rows="1" placeholder="${ph || ""}">${esc(cur()[f])}</textarea>`;
   const chip = (k, label, hi) => `<span class="chip${cur()[k] ? " on" : ""}${hi ? " hi" : ""}" data-tg="${k}">${label}</span>`;
+  // 약 칩 하나: 색(0 끔·1 경구·2 주사·3 기타) + 성분명(있으면)
+  function medChip(t, v, n){
+    return `<span class="medl m${(+v >= 0 && +v <= 3) ? +v : 0}${MED_HIGH.includes(t) ? " hi" : ""}" data-t="${esc(t)}" data-n="${esc(n || "")}">${esc(t)}${n ? `<small>${esc(n)}</small>` : ""}</span>`;
+  }
   function medHTML(o){
-    const m = o.med || {}, pr = medPriority(o);
-    const one = t => ((Array.isArray(m[t]) && m[t].length) ? m[t] : [0])
-      .map(x => `<span class="medl m${(+x >= 0 && +x <= 3) ? +x : 0}" data-t="${t}" title="${MED_NAMES[t] || ""}">${medLabel(t)}</span>`).join("");
-    const body = edMedMore ? MED_GROUPS.map(g => g.map(one).join("")).join(`<span class="mbr"></span>`)   // 전체: 분류별 줄
-                           : pr.map(one).join("");                                                    // 이 환자 우선
+    const m = o.med || {}, nn = o.medn || {}, pr = medPriority(o);
+    const one = t => ((Array.isArray(m[t]) && m[t].length) ? m[t] : [0]).map((v, k) => medChip(t, v, (nn[t] || [])[k])).join("");
+    const g = MED_TREE[edMedGrp];
     const cx = (o.medx || []).map(r => `<span class="medl m${(+r.v >= 0 && +r.v <= 3) ? +r.v : 1}" data-x="1" data-name="${esc(r.t)}">${esc(r.t)}</span>`).join("");
-    return body + cx + `<button class="addbtn sm" data-medadd="1">+ 약</button><button class="addbtn sm" data-medmore="1">${edMedMore ? "접기" : "더보기"}</button>`;
+    return `<div class="mzone" id="mz">${pr.map(one).join("")}${cx}<button class="addbtn sm" data-medadd="1">+ 직접</button></div>`
+      + `<div class="chips mgrp">${MED_TREE.map((x, k) => `<span class="chip${k === edMedGrp ? " on" : ""}" data-mgrp="${k}">${x[0]}</span>`).join("")}</div>`
+      + (g ? `<div class="mzone sub" id="mzs">${g[1].filter(t => !pr.includes(t)).map(one).join("") || `<span class="ed-help">이 분류는 모두 위에 있어요</span>`}</div>` : "");
   }
   // + 약: 목록에 없는 약을 이 환자에게만 추가 (탭으로 색 순환, 두 번 탭 삭제)
   function startMedAdd(){
@@ -1394,8 +1417,8 @@
         ${ptList(o).filter(x => PT_TIME[x]).map(x => `<label class="lbl"><span>${x} 시간</span>${inp(PT_TIME[x], "14:00", 'inputmode="decimal"')}</label>`).join("")}</div></div>
       <div class="sec"><div class="k">약</div><div class="v">
         <div class="lbl"><span>수액</span><span class="seg sm">${FLUIDS.map(f => `<button data-fl="${f}" class="${flList(o).includes(f) ? "on" : ""}">${f}</button>`).join("")}</span></div>
-        <div class="mzone" id="mz">${medHTML(o)}</div>
-        <div class="ed-help">${edMedMore ? MED_GROUPS.map(g => g.map(t => medLabel(t) + " " + MED_NAMES[t]).join(" · ")).join("<br>") + "<br>" : "과·과거력에 맞는 약만 먼저 보여요 · "}탭: 경구(초록)→주사(파랑)→기타(노랑)→끔 · 길게: 추가 · 두 번 탭: 삭제</div>
+        ${medHTML(o)}
+        <div class="ed-help">위: 과·과거력에 맞는 분류 · 아래 분류를 누르면 나머지가 펼쳐져요<br>탭: 경구(초록)→주사(파랑)→기타(노랑)→끔 · 길게: 성분명·하나 더·삭제 · 두 번 탭: 삭제</div>
         ${inp("mednote", "약 메모 (ceftriaxone D3 …)")}</div></div>
       <div class="sec"><div class="k">체크</div><div class="v"><div class="tgrid">${tg}</div>
         <div class="vsin"><span>V/S</span>${inp("vs1", "SBP", 'inputmode="numeric"')}/${inp("vs2", "DBP", 'inputmode="numeric"')}-${inp("vhr", "HR", 'inputmode="numeric"')}-${inp("vrr", "RR", 'inputmode="numeric"')}-${inp("vbt", "BT", 'inputmode="decimal"')}<span>SpO2</span>${inp("vsp", "%", 'inputmode="numeric"')}</div></div></div>
@@ -1492,7 +1515,8 @@
     if (pmp){ togglePmh(o, pmp.dataset.pmhpick, true); rerenderEd("pmhq"); return; }
     const pmx = t.closest("[data-pmhx]");
     if (pmx){ const l = pmhCustom(o); l.splice(+pmx.dataset.pmhx, 1); o.pmhx = l.join(", "); rerenderEd(); return; }
-    if (t.closest("[data-medmore]")){ edMedMore = !edMedMore; rerenderEd(); return; }
+    const mg = t.closest("[data-mgrp]");
+    if (mg){ edMedGrp = edMedGrp === +mg.dataset.mgrp ? -1 : +mg.dataset.mgrp; rerenderEd(); return; }
     if (t.closest("[data-medadd]")){ startMedAdd(); return; }
     const tdb = t.closest("[data-today]");
     if (tdb){ const f = tdb.dataset.today; o[f] = todayMD(); if (f === "op") syncAutoTodo(o, "op", opTodoText(o)); rerenderEd(); return; }
@@ -1644,19 +1668,53 @@
     const st = el => +((el.className.match(/\bm(\d)\b/) || [0, 0])[1]);
     const setSt = (el, s) => { el.classList.remove("m0","m1","m2","m3"); el.classList.add("m" + s); };
     const save = () => {
-      const mz = $("#mz"), m = {};
-      const o = cur(), old = o.med || {};
-      MED_TYPES.forEach(t => { const els = mz.querySelectorAll(`.medl[data-t="${t}"]`); m[t] = els.length ? [...els].map(st) : (old[t] || []); });   // 안 보이는 약은 그대로
-      o.med = m;
-      o.medx = [...mz.querySelectorAll(".medl[data-x]")].map(el => ({ t:el.dataset.name, v:st(el) }));
+      const o = cur(), old = o.med || {}, oldn = o.medn || {}, m = {}, n = {};
+      const els = [...box.querySelectorAll("#mz .medl[data-t], #mzs .medl[data-t]")];
+      MED_TYPES.forEach(t => {
+        const e2 = els.filter(el => el.dataset.t === t);
+        if (e2.length){ m[t] = e2.map(st); n[t] = e2.map(el => el.dataset.n || ""); }
+        else { m[t] = old[t] || []; n[t] = oldn[t] || []; }                // 안 보이는 분류는 그대로
+        if (!n[t].some(Boolean)) delete n[t];
+      });
+      o.med = m; o.medn = n;
+      o.medx = [...box.querySelectorAll("#mz .medl[data-x]")].map(el => ({ t:el.dataset.name, v:st(el) }));
       refreshChartPre(); refreshOut();
     };
+    // 길게 누르면: 성분명 · 하나 더 · 삭제
+    let menu = null;
+    const closeMenu = () => { if (menu){ menu.remove(); menu = null; } };
+    const openMenu = el => {
+      closeMenu();
+      menu = document.createElement("div"); menu.className = "ctxmenu medmenu";
+      menu.innerHTML = `<div class="cm-row"><b>${esc(el.dataset.t || el.dataset.name)}</b></div>`
+        + (el.dataset.t ? `<div class="cm-row"><input class="mmn" placeholder="성분명 (warfarin …)" value="${esc(el.dataset.n || "")}" enterkeyhint="done"><button data-mm="save">저장</button></div>
+           <div class="cm-row"><button data-mm="more">하나 더</button><button data-mm="del">삭제</button><button data-mm="close">닫기</button></div>`
+                         : `<div class="cm-row"><button data-mm="del">삭제</button><button data-mm="close">닫기</button></div>`);
+      document.body.appendChild(menu);
+      const r = el.getBoundingClientRect();
+      menu.style.left = Math.max(4, Math.min(r.left, window.innerWidth - menu.offsetWidth - 4)) + "px";
+      menu.style.top = Math.min(r.bottom + 4, window.innerHeight - menu.offsetHeight - 4) + "px";
+      const inp = menu.querySelector(".mmn");
+      const setName = () => { if (!inp) return; const v = inp.value.trim(); el.dataset.n = v;
+        el.innerHTML = esc(el.dataset.t) + (v ? `<small>${esc(v)}</small>` : ""); if (v && !st(el)) setSt(el, 1); };
+      menu.addEventListener("click", e => {
+        e.stopPropagation();
+        const b = e.target.closest("[data-mm]"); if (!b) return;
+        const a = b.dataset.mm;
+        if (a === "save") setName();
+        else if (a === "more"){ setName(); const c = el.cloneNode(false); c.dataset.n = ""; c.textContent = el.dataset.t; setSt(c, 1); el.after(c); }
+        else if (a === "del"){ const sib = box.querySelectorAll(`.medl[data-t="${CSS.escape(el.dataset.t || "")}"]`);
+          if (el.dataset.x || sib.length > 1) el.remove(); else { el.dataset.n = ""; el.textContent = el.dataset.t; setSt(el, 0); } }
+        closeMenu(); save();
+      });
+      if (inp) inp.addEventListener("keydown", e => { if (e.isComposing || e.keyCode === 229) return; if (e.key === "Enter"){ e.preventDefault(); setName(); closeMenu(); save(); } });
+    };
+    document.addEventListener("pointerdown", e => { if (menu && !menu.contains(e.target)) closeMenu(); }, true);
     box.addEventListener("pointerdown", e => {
       downEl = e.target.closest(".medl"); if (!downEl) return;
       longFired = false; sx = e.clientX; sy = e.clientY; cancel();
       const el = downEl;
-      if (el.dataset.x) return;                                          // 직접 추가한 약은 길게 눌러 복제 안 함
-      lp = setTimeout(() => { lp = null; longFired = true; const n = el.cloneNode(true); setSt(n, 1); el.after(n); last = { el:null, t:0 }; save(); }, 500);
+      lp = setTimeout(() => { lp = null; longFired = true; last = { el:null, t:0 }; openMenu(el); }, 500);
     });
     box.addEventListener("pointermove", e => { if (lp && Math.hypot(e.clientX - sx, e.clientY - sy) > 8) cancel(); });
     box.addEventListener("pointercancel", cancel);
@@ -1664,10 +1722,10 @@
     box.addEventListener("pointerup", () => {
       const el = downEl; downEl = null; cancel();
       if (!el || longFired || !el.isConnected) return;
-      const now = Date.now(), mz = $("#mz");
+      const now = Date.now();
       if (last.el === el && now - last.t < 350){
         last = { el:null, t:0 };
-        if (el.dataset.x || mz.querySelectorAll(`.medl[data-t="${el.dataset.t}"]`).length > 1) el.remove(); else setSt(el, 0);
+        if (el.dataset.x || box.querySelectorAll(`.medl[data-t="${CSS.escape(el.dataset.t)}"]`).length > 1) el.remove(); else { el.dataset.n = ""; el.textContent = el.dataset.t; setSt(el, 0); }
       } else { last = { el, t:now }; setSt(el, (st(el) + 1) % 4); }
       save();
     });
